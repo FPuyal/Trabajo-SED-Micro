@@ -16,10 +16,8 @@
   ******************************************************************************
   */
 /* USER CODE END Header */
-
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include <stdio.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -38,6 +36,7 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+
 /* USER CODE BEGIN PV */
 float distancia = 0.0f;
 /* USER CODE END PV */
@@ -45,11 +44,14 @@ float distancia = 0.0f;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-
+/* USER CODE BEGIN PFP */
 void DWT_Delay_us(uint32_t us);
 float HC_SR04_ReadDistance(void); // Función para medir la distancia del sensor
+void LED_Red_On(void);
+void LED_Green_On(void);
+void LED_Blue_On(void);
+void LED_All_Off(void);
 
-/* USER CODE BEGIN PFP */
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -62,30 +64,63 @@ float HC_SR04_ReadDistance(void); // Función para medir la distancia del sensor
   */
 int main(void)
 {
+
+  /* USER CODE BEGIN 1 */
+
+  /* USER CODE END 1 */
+
   /* MCU Configuration--------------------------------------------------------*/
+
+  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
 
+  /* USER CODE BEGIN Init */
   // Habilitar el TRC (Trace Control)
-  CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
-  // Reiniciar el contador de ciclos
-  DWT->CYCCNT = 0;
-  // Habilitar el contador
-  DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+  	  CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+  	  // Reiniciar el contador de ciclos
+  	  DWT->CYCCNT = 0;
+  	  // Habilitar el contador
+  	  DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 
+  /* USER CODE END Init */
 
+  /* Configure the system clock */
   SystemClock_Config();
+
+  /* USER CODE BEGIN SysInit */
+
+  /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  /* USER CODE BEGIN 2 */
 
+  /* USER CODE END 2 */
+
+  /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
   while (1)
   {
-    /* Medir la distancia */
-    distancia = HC_SR04_ReadDistance();
+    /* USER CODE END WHILE */
 
-    /* Retardo entre mediciones (en ms) */
-    HAL_Delay(200);
+    /* USER CODE BEGIN 3 */
+	  /* Medir la distancia */
+	   distancia = HC_SR04_ReadDistance();
+
+	   // Cambiar el color del LED según la distancia
+	       if (distancia < 6.0f) {
+	           LED_Red_On(); // Distancia menor a 10 cm → LED Rojo
+	       } else if (distancia >= 6.0f && distancia <= 30.0f) {
+	           LED_Green_On(); // Distancia entre 10 y 30 cm → LED Verde
+	       } else {
+	           LED_Blue_On(); // Distancia mayor a 30 cm → LED Azul
+	       }
+
+	/* Retardo entre mediciones (en ms) */
+	   HAL_Delay(200);
+
   }
+  /* USER CODE END 3 */
 }
 
 /**
@@ -94,36 +129,41 @@ int main(void)
   */
 void SystemClock_Config(void)
 {
-  /* Aquí tu configuración actual de reloj,
-     que establece el MCU a 168 MHz, por ejemplo. */
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
+  /** Configure the main internal regulator output voltage
+  */
   __HAL_RCC_PWR_CLK_ENABLE();
   __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
 
-  RCC_OscInitStruct.OscillatorType      = RCC_OSCILLATORTYPE_HSI;
-  RCC_OscInitStruct.HSIState           = RCC_HSI_ON;
-  RCC_OscInitStruct.PLL.PLLState       = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource      = RCC_PLLSOURCE_HSI;
-  RCC_OscInitStruct.PLL.PLLM           = 16;
-  RCC_OscInitStruct.PLL.PLLN           = 336;
-  RCC_OscInitStruct.PLL.PLLP           = RCC_PLLP_DIV2;
-  RCC_OscInitStruct.PLL.PLLQ           = 7;
+  /** Initializes the RCC Oscillators according to the specified parameters
+  * in the RCC_OscInitTypeDef structure.
+  */
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
+  RCC_OscInitStruct.PLL.PLLM = 8;
+  RCC_OscInitStruct.PLL.PLLN = 100;
+  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
+  RCC_OscInitStruct.PLL.PLLQ = 7;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
   }
-  RCC_ClkInitStruct.ClockType           = RCC_CLOCKTYPE_HCLK
-                                        | RCC_CLOCKTYPE_SYSCLK
-                                        | RCC_CLOCKTYPE_PCLK1
-                                        | RCC_CLOCKTYPE_PCLK2;
-  RCC_ClkInitStruct.SYSCLKSource       = RCC_SYSCLKSOURCE_PLLCLK;
-  RCC_ClkInitStruct.AHBCLKDivider      = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider     = RCC_HCLK_DIV4;
-  RCC_ClkInitStruct.APB2CLKDivider     = RCC_HCLK_DIV2;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_5) != HAL_OK)
+  /** Initializes the CPU, AHB and APB buses clocks
+  */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
+
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_3) != HAL_OK)
   {
     Error_Handler();
   }
@@ -136,26 +176,42 @@ void SystemClock_Config(void)
   */
 static void MX_GPIO_Init(void)
 {
-  /* Habilitar el reloj del puerto C */
-  __HAL_RCC_GPIOC_CLK_ENABLE();
-
   GPIO_InitTypeDef GPIO_InitStruct = {0};
+/* USER CODE BEGIN MX_GPIO_Init_1 */
+/* USER CODE END MX_GPIO_Init_1 */
 
-  /*Configure GPIO pin Output Level (PC0) */
+  /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_RESET);
 
-  /* PC0 como salida (Trig) */
-  GPIO_InitStruct.Pin   = GPIO_PIN_0;
-  GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull  = GPIO_NOPULL;
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : PC0 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /* PC1 como entrada (Echo) */
-  GPIO_InitStruct.Pin   = GPIO_PIN_1;
-  GPIO_InitStruct.Mode  = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull  = GPIO_NOPULL;
+  /*Configure GPIO pin : PC1 */
+  GPIO_InitStruct.Pin = GPIO_PIN_1;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PA0 PA1 PA2 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+/* USER CODE BEGIN MX_GPIO_Init_2 */
+/* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
@@ -214,6 +270,31 @@ void DWT_Delay_us(uint32_t us)
     while ((DWT->CYCCNT - startTick) < ticks);
 }
 
+void LED_Red_On(void) {
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_SET); // Encender Rojo
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_RESET); // Apagar Verde
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2, GPIO_PIN_RESET); // Apagar Azul
+}
+
+void LED_Green_On(void) {
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_SET); // Encender Verde
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_RESET); // Apagar Rojo
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2, GPIO_PIN_RESET); // Apagar Azul
+}
+
+void LED_Blue_On(void) {
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2, GPIO_PIN_SET); // Encender Azul
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_RESET); // Apagar Rojo
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_RESET); // Apagar Verde
+}
+
+void LED_All_Off(void) {
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_RESET); // Apagar Rojo
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_RESET); // Apagar Verde
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2, GPIO_PIN_RESET); // Apagar Azul
+}
+
+
 /* USER CODE END 4 */
 
 /**
@@ -222,11 +303,13 @@ void DWT_Delay_us(uint32_t us)
   */
 void Error_Handler(void)
 {
+  /* USER CODE BEGIN Error_Handler_Debug */
+  /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
   while (1)
   {
-    // Aquí puedes agregar tu código de manejo de errores
   }
+  /* USER CODE END Error_Handler_Debug */
 }
 
 #ifdef  USE_FULL_ASSERT
@@ -239,6 +322,9 @@ void Error_Handler(void)
   */
 void assert_failed(uint8_t *file, uint32_t line)
 {
-  // Mensaje o manejo de error
+  /* USER CODE BEGIN 6 */
+  /* User can add his own implementation to report the file name and line number,
+     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+  /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */

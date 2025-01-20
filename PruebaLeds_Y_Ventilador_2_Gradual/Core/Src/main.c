@@ -55,7 +55,7 @@ float temperature = 0.0f;
 float humidity = 0.0f;
 uint16_t temp_raw = 0, hum_raw = 0;
 bool alarm = true; // Estado de la alarma (TRUE: apagada, FALSE: activa)
-float temperature_max = 18.0f;
+float temperature_max = 19.0f;
 // Variables para antirrebotes en control de alarma
 uint32_t lastTimeAlarmUp = 0; // Tiempo desde que se incremento el counterTempAlarmUp
 uint8_t counterTempAlarmUp = 0; // Contador de mediciones consecutivas cuando la temperatura se sale del rango
@@ -65,8 +65,17 @@ uint8_t maxCounterTempAlarm = 5; // Máximo número de mediciones necesarias
 //Variables para concurrencia entre lecturas sensor SHT85 y control de alarma
 uint32_t lastTimeSHT = 0; // Tiempo de la última lectura del sensor
 uint32_t lastTimeIncreasingLight = 0; // Tiempo desde que se incremento o decremento el duty en el led rojo
-uint16_t duty = 0; // Ciclo de trabajo del led rojo
+uint16_t duty = 1000; // Ciclo de trabajo del led rojo
 bool increasingLight = true; // Control de dirección del ciclo de trabajo. TRUE incrementa luz. FALSE decrementa luz
+// Calculo de temperaturas medias cada 1 segundo (5 muestras recogidas cada 200ms cada una)
+float totalTemperature = 0.0f;
+float averageTemperature = 0.0f;
+uint8_t sampleCount = 0;
+
+// Variables USUARIO
+uint16_t samplingPeriod = 200; // tiempo de muestreo de temperaturas (en ms)
+uint16_t averagePeriod = 5; // tiempo deseado para calcular las temperaturas medias (en segundos)
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -104,8 +113,9 @@ bool setAlarm(float temp){		// TRUE apagado. FALSE alarma encendida
 	if(temp > temperature_max){
 		counterTempAlarmDown = 0; // Si la temperatura se sale de rango, reiniciar el contador para cuando entra en el rango
 
-		// Debouncer con 200 ms de separación
-		if(HAL_GetTick() - lastTimeAlarmUp >= 200){
+		// Debouncer con 200 ms de separación. 200ms o el periodo de muestreo que seleccione el usuario
+		//if(HAL_GetTick() - lastTimeAlarmUp >= samplingPeriod){	//si se quiere controlar la alarma con la temperatura actual
+		if(HAL_GetTick() - lastTimeAlarmUp >= averagePeriod*1000){//si se quiere controlar la alarma con la temperatura media
 			lastTimeAlarmUp = HAL_GetTick(); // Se actualiza el tiempo de referencia
 			if(temp <= temperature_max){ counterTempAlarmUp = 0; } //Si entra dentro de rango: "falsa" medicion
 			else { counterTempAlarmUp++; }	// Lectura correcta: fuera de rango
@@ -121,7 +131,8 @@ bool setAlarm(float temp){		// TRUE apagado. FALSE alarma encendida
 		counterTempAlarmUp = 0; // Si la temperatura vuelve al rango normal, reiniciar el contador para cuando se sale de rango
 
 		// Debouncer con 200 ms de separación
-		if(HAL_GetTick() - lastTimeAlarmDown >= 200){
+		//if(HAL_GetTick() - lastTimeAlarmDown >= samplingPeriod){//si se quiere controlar la alarma con la temperatura actual
+		if(HAL_GetTick() - lastTimeAlarmDown >= averagePeriod*1000){//si se quiere controlar la alarma con la temperatura media
 			lastTimeAlarmDown = HAL_GetTick(); // Se actualiza el tiempo de referencia
 			if(temp > temperature_max){ counterTempAlarmDown = 0; } //Si sale fuera de rango: "falsa" medicion
 			else { counterTempAlarmDown++; }	// Lectura correcta: dentro de rango
@@ -136,6 +147,19 @@ bool setAlarm(float temp){		// TRUE apagado. FALSE alarma encendida
 
 	return alarmState;
 }
+
+
+void calculatorAverageTemperature(float newTemperature) {
+    totalTemperature += newTemperature;
+    sampleCount++;
+
+    if (sampleCount >= averagePeriod*1000/samplingPeriod) { // Se leen 25 muestras (durante 5 segundos)
+        averageTemperature = totalTemperature / (averagePeriod*1000/samplingPeriod);
+        totalTemperature = 0.0f; // Reinicia acumulador
+        sampleCount = 0;
+    }
+}
+
 
 /* USER CODE END PFP */
 
@@ -152,7 +176,6 @@ int main(void)
 {
 
 	/* USER CODE BEGIN 1 */
-
 
 	/* USER CODE END 1 */
 
@@ -184,10 +207,9 @@ int main(void)
 	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
 	__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 1000); // Configura el ciclo de trabajo a 1000 (Rojo apagado)
 
-	lastTimeSHT = 0;
+	lastTimeSHT = HAL_GetTick();
 	lastTimeIncreasingLight = HAL_GetTick();
-	duty = 1000;
-	//alarm = true;
+	//duty = 1000;
 
 
     /* USER CODE END 2 */
@@ -197,10 +219,12 @@ int main(void)
     while (1)
     {
       /* USER CODE END WHILE */
-    	if (HAL_GetTick() - lastTimeSHT >= 200) { // Leer los sensores cada 200 ms
+    	if (HAL_GetTick() - lastTimeSHT >= samplingPeriod) { // Leer los sensores cada 200 ms (periodo de muestreo)
     			lastTimeSHT = HAL_GetTick(); // Se actualiza referencia
     	        ReadSHT85(&temperature, &humidity); // Leer sensores
-    	        alarm = setAlarm(temperature);      // Verificar alarma
+    	        calculatorAverageTemperature(temperature);		// Se calculan temperaturas medias
+    	        //alarm = setAlarm(temperature);      // Verificar alarma. Si se quiere controlar la alarma con la temperatura actual. Se activa antes
+    	        alarm = setAlarm(averageTemperature);      // Verificar alarma. Si se quiere controlar la alarma con la temperatura media. Se activa más tarde
     	}
 
     	if (!alarm) { // La alarma se activa pq se supera temperatura maxima

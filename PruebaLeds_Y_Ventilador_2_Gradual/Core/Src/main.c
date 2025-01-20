@@ -55,7 +55,7 @@ float temperature = 0.0f;
 float humidity = 0.0f;
 uint16_t temp_raw = 0, hum_raw = 0;
 bool alarm = true; // Estado de la alarma (TRUE: apagada, FALSE: activa)
-float temperature_max = 19.0f;
+float temperature_max = 19.7f;
 // Variables para antirrebotes en control de alarma
 uint32_t lastTimeAlarmUp = 0; // Tiempo desde que se incremento el counterTempAlarmUp
 uint8_t counterTempAlarmUp = 0; // Contador de mediciones consecutivas cuando la temperatura se sale del rango
@@ -75,6 +75,7 @@ uint8_t sampleCount = 0;
 // Variables USUARIO
 uint16_t samplingPeriod = 200; // tiempo de muestreo de temperaturas (en ms)
 uint16_t averagePeriod = 5; // tiempo deseado para calcular las temperaturas medias (en segundos)
+bool alarmWithActualTemp = true; // TRUE: alarma se detecta mas rapido (con temp actual). FALSE: alarma se detecta mas lento (con temp media, se espera a leer varios datos)
 
 /* USER CODE END PV */
 
@@ -109,13 +110,15 @@ void ReadSHT85(float *temperature, float *humidity) {
 
 bool setAlarm(float temp){		// TRUE apagado. FALSE alarma encendida
 	static bool alarmState = true; // Estado de la alarma (true: apagada, false: activa)
+	uint32_t alarmPeriod = alarmWithActualTemp ? samplingPeriod : (averagePeriod * 1000);
 
 	if(temp > temperature_max){
 		counterTempAlarmDown = 0; // Si la temperatura se sale de rango, reiniciar el contador para cuando entra en el rango
 
-		// Debouncer con 200 ms de separación. 200ms o el periodo de muestreo que seleccione el usuario
-		//if(HAL_GetTick() - lastTimeAlarmUp >= samplingPeriod){	//si se quiere controlar la alarma con la temperatura actual
-		if(HAL_GetTick() - lastTimeAlarmUp >= averagePeriod*1000){//si se quiere controlar la alarma con la temperatura media
+
+
+
+		if(HAL_GetTick() - lastTimeAlarmUp >= alarmPeriod){//si se quiere controlar la alarma con la temperatura media
 			lastTimeAlarmUp = HAL_GetTick(); // Se actualiza el tiempo de referencia
 			if(temp <= temperature_max){ counterTempAlarmUp = 0; } //Si entra dentro de rango: "falsa" medicion
 			else { counterTempAlarmUp++; }	// Lectura correcta: fuera de rango
@@ -132,7 +135,7 @@ bool setAlarm(float temp){		// TRUE apagado. FALSE alarma encendida
 
 		// Debouncer con 200 ms de separación
 		//if(HAL_GetTick() - lastTimeAlarmDown >= samplingPeriod){//si se quiere controlar la alarma con la temperatura actual
-		if(HAL_GetTick() - lastTimeAlarmDown >= averagePeriod*1000){//si se quiere controlar la alarma con la temperatura media
+		if(HAL_GetTick() - lastTimeAlarmDown >= alarmPeriod){//si se quiere controlar la alarma con la temperatura media
 			lastTimeAlarmDown = HAL_GetTick(); // Se actualiza el tiempo de referencia
 			if(temp > temperature_max){ counterTempAlarmDown = 0; } //Si sale fuera de rango: "falsa" medicion
 			else { counterTempAlarmDown++; }	// Lectura correcta: dentro de rango
@@ -223,8 +226,9 @@ int main(void)
     			lastTimeSHT = HAL_GetTick(); // Se actualiza referencia
     	        ReadSHT85(&temperature, &humidity); // Leer sensores
     	        calculatorAverageTemperature(temperature);		// Se calculan temperaturas medias
+    	        float temperatureToCheck = alarmWithActualTemp ? temperature : averageTemperature;
     	        //alarm = setAlarm(temperature);      // Verificar alarma. Si se quiere controlar la alarma con la temperatura actual. Se activa antes
-    	        alarm = setAlarm(averageTemperature);      // Verificar alarma. Si se quiere controlar la alarma con la temperatura media. Se activa más tarde
+    	        alarm = setAlarm(temperatureToCheck);      // Verificar alarma. Si se quiere controlar la alarma con la temperatura media. Se activa más tarde
     	}
 
     	if (!alarm) { // La alarma se activa pq se supera temperatura maxima

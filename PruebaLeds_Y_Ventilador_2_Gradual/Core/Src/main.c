@@ -54,8 +54,19 @@ TIM_HandleTypeDef htim2;
 float temperature = 0.0f;
 float humidity = 0.0f;
 uint16_t temp_raw = 0, hum_raw = 0;
-bool alarm = false; // Estado inicial de la alarma (apagado)
-float temperature_max = 19.0f;
+bool alarm = true; // Estado de la alarma (TRUE: apagada, FALSE: activa)
+float temperature_max = 18.0f;
+// Variables para antirrebotes en control de alarma
+uint32_t lastTimeAlarmUp = 0; // Tiempo desde que se incremento el counterTempAlarmUp
+uint8_t counterTempAlarmUp = 0; // Contador de mediciones consecutivas cuando la temperatura se sale del rango
+uint32_t lastTimeAlarmDown = 0; // Tiempo desde que se incremento el counterTempAlarmDown
+uint8_t counterTempAlarmDown = 0; // Contador de mediciones consecutivas cuando la temperatura entra en rango de nuevo
+uint8_t maxCounterTempAlarm = 5; // Máximo número de mediciones necesarias
+//Variables para concurrencia entre lecturas sensor SHT85 y control de alarma
+uint32_t lastTimeSHT = 0; // Tiempo de la última lectura del sensor
+uint32_t lastTimeIncreasingLight = 0; // Tiempo desde que se incremento o decremento el duty en el led rojo
+uint16_t duty = 0; // Ciclo de trabajo del led rojo
+bool increasingLight = true; // Control de dirección del ciclo de trabajo. TRUE incrementa luz. FALSE decrementa luz
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -87,13 +98,43 @@ void ReadSHT85(float *temperature, float *humidity) {
     *humidity = 100 * ((float)hum_raw / 65535);
 }
 
-bool setAlarm(float temp){		// TRUE apagado. FALSE encendida alarma
+bool setAlarm(float temp){		// TRUE apagado. FALSE alarma encendida
+	static bool alarmState = true; // Estado de la alarma (true: apagada, false: activa)
+
 	if(temp > temperature_max){
-		return false;
+		counterTempAlarmDown = 0; // Si la temperatura se sale de rango, reiniciar el contador para cuando entra en el rango
+
+		// Debouncer con 200 ms de separación
+		if(HAL_GetTick() - lastTimeAlarmUp >= 200){
+			lastTimeAlarmUp = HAL_GetTick(); // Se actualiza el tiempo de referencia
+			if(temp <= temperature_max){ counterTempAlarmUp = 0; } //Si entra dentro de rango: "falsa" medicion
+			else { counterTempAlarmUp++; }	// Lectura correcta: fuera de rango
+
+			if (counterTempAlarmUp >= maxCounterTempAlarm) { //Se da por buena la lectura: FUERA DE RANGO VERIFICADO
+				counterTempAlarmUp = maxCounterTempAlarm;
+				alarmState = false; // Alarma activada (fuera de rango confirmado)
+			}
+			//else { alarmState = true; } // TRUE: aun no se ha confirmado que la temperatura este fuera de rango
+		}
 	}
 	else {
-		return true;
+		counterTempAlarmUp = 0; // Si la temperatura vuelve al rango normal, reiniciar el contador para cuando se sale de rango
+
+		// Debouncer con 200 ms de separación
+		if(HAL_GetTick() - lastTimeAlarmDown >= 200){
+			lastTimeAlarmDown = HAL_GetTick(); // Se actualiza el tiempo de referencia
+			if(temp > temperature_max){ counterTempAlarmDown = 0; } //Si sale fuera de rango: "falsa" medicion
+			else { counterTempAlarmDown++; }	// Lectura correcta: dentro de rango
+
+			if (counterTempAlarmDown >= maxCounterTempAlarm) { //Se da por buena la lectura: DENTRO DE RANGO VERIFICADO
+				counterTempAlarmDown = maxCounterTempAlarm; // Limitar el contador
+				alarmState = true; // TRUE: alarma se apaga
+			}
+			//else { alarmState = false; } // FALSE: aun no se ha confirmado que la temperatura este dentro de rango nuevamente
+		}
 	}
+
+	return alarmState;
 }
 
 /* USER CODE END PFP */
@@ -111,6 +152,7 @@ int main(void)
 {
 
 	/* USER CODE BEGIN 1 */
+
 
 	/* USER CODE END 1 */
 
@@ -140,8 +182,12 @@ int main(void)
 
 	// Inicia el PWM en el canal 1 (PA0 - LED Rojo)
 	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
-	__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 1001); // Configura el ciclo de trabajo a 1000 (Rojo apagado)
+	__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 1000); // Configura el ciclo de trabajo a 1000 (Rojo apagado)
 
+	lastTimeSHT = 0;
+	lastTimeIncreasingLight = HAL_GetTick();
+	duty = 1000;
+	//alarm = true;
 
 
     /* USER CODE END 2 */
@@ -151,30 +197,45 @@ int main(void)
     while (1)
     {
       /* USER CODE END WHILE */
-  	  ReadSHT85(&temperature, &humidity);
-  	  alarm = setAlarm(temperature);
-  	  //HAL_Delay(1000); // Leer cada segundo
-  	  if (!alarm) { // La alarma se activa pq se supera temperatura maxima
-  		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_RESET); // Encender VENTILADOR
-  		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_SET); // AMARILLO (ROJO + VERDE)
-  		  // Incrementa gradualmente la intensidad
-  		  for (uint16_t duty = 1000; duty > 0; duty -= 10) { // De 100% a 0% en pasos de -10. Lógica inversa
-			   __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, duty); // Ajusta el ciclo de trabajo
-			   HAL_Delay(5); // Controla la velocidad de cambio
-		   }
+    	if (HAL_GetTick() - lastTimeSHT >= 200) { // Leer los sensores cada 200 ms
+    			lastTimeSHT = HAL_GetTick(); // Se actualiza referencia
+    	        ReadSHT85(&temperature, &humidity); // Leer sensores
+    	        alarm = setAlarm(temperature);      // Verificar alarma
+    	}
 
-		   // Disminuye gradualmente la intensidad
-		   for (uint16_t duty = 0; duty < 1000; duty += 10) { // De 0% a 100% en pasos de 10. Lógica inversa
-			   __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, duty); // Ajusta el ciclo de trabajo
-			   HAL_Delay(5); // Controla la velocidad de cambio
-		   }
-  	  }
-  	  else {
-  	     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_SET); // Apagar VENTILADOR
-  	     __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 0); // AMARILLO (ROJO + VERDE)
-  	     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_RESET); // AMARILLO (ROJO + VERDE)
-  	     HAL_Delay(1000); // Leer cada segundo
-  	  }
+    	if (!alarm) { // La alarma se activa pq se supera temperatura maxima
+    		// Incrementa gradualmente la intensidad del led rojo del RGB
+    		if (HAL_GetTick() - lastTimeIncreasingLight >= 20) {
+				lastTimeIncreasingLight = HAL_GetTick();
+
+				if (increasingLight) {
+					duty -= 50; // Decrementar el ciclo de trabajo (lógica inversa)
+					if (duty <= 0) {
+						duty = 0;
+						// Insertar bocina, aqui llega al pico maximo de luz
+						increasingLight = false; // Cambiar dirección
+					}
+				} else {
+					duty += 50; // Incrementar el ciclo de trabajo
+					if (duty >= 1000) {
+						duty = 1000;
+						increasingLight = true; // Cambiar dirección
+					}
+				}
+
+			  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, duty); // Ajusta el ciclo de trabajo
+			}
+
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_RESET); // Encender VENTILADOR
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_SET); // AMARILLO (ROJO + VERDE)
+
+    	}
+    	else {
+    		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_SET); // Apagar VENTILADOR
+    		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 0); // AMARILLO (ROJO + VERDE)
+    		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_RESET); // AMARILLO (ROJO + VERDE)
+    	}
+
       /* USER CODE BEGIN 3 */
     }
 

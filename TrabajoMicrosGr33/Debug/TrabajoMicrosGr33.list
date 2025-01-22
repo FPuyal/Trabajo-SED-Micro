@@ -39,13 +39,13 @@ Idx Name          Size      VMA       LMA       File off  Algn
                   CONTENTS, READONLY, DEBUGGING, OCTETS
  17 .debug_line   0000e20d  00000000  00000000  00029be8  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 18 .debug_str    0008dea8  00000000  00000000  00037df5  2**0
+ 18 .debug_str    0008dee9  00000000  00000000  00037df5  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 19 .comment      00000043  00000000  00000000  000c5c9d  2**0
+ 19 .comment      00000043  00000000  00000000  000c5cde  2**0
                   CONTENTS, READONLY
- 20 .debug_frame  000034e4  00000000  00000000  000c5ce0  2**2
+ 20 .debug_frame  000034e4  00000000  00000000  000c5d24  2**2
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 21 .debug_line_str 0000006d  00000000  00000000  000c91c4  2**0
+ 21 .debug_line_str 00000069  00000000  00000000  000c9208  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
 
 Disassembly of section .text:
@@ -729,7 +729,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_PIN)
 			angle = 0;
  80007b0:	2300      	movs	r3, #0
  80007b2:	81fb      	strh	r3, [r7, #14]
-			pulse = 40 + ((120 - 40) * angle) / 180; // mapeo
+			pulse = 40 + ((120 - 40) * angle) / 180; // mapeo 40
  80007b4:	89fa      	ldrh	r2, [r7, #14]
  80007b6:	4613      	mov	r3, r2
  80007b8:	009b      	lsls	r3, r3, #2
@@ -743,17 +743,17 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_PIN)
  80007ca:	1ad3      	subs	r3, r2, r3
  80007cc:	3328      	adds	r3, #40	@ 0x28
  80007ce:	60bb      	str	r3, [r7, #8]
-			__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, pulse); // Configura el ciclo de trabajo a 1000 (Rojo apagado)
+			__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 80); // Configura el ciclo de trabajo a 1000 (Rojo apagado)
  80007d0:	4b17      	ldr	r3, [pc, #92]	@ (8000830 <HAL_GPIO_EXTI_Callback+0xb0>)
  80007d2:	681b      	ldr	r3, [r3, #0]
- 80007d4:	68ba      	ldr	r2, [r7, #8]
+ 80007d4:	2250      	movs	r2, #80	@ 0x50
  80007d6:	639a      	str	r2, [r3, #56]	@ 0x38
  80007d8:	e013      	b.n	8000802 <HAL_GPIO_EXTI_Callback+0x82>
 		} else{
 			angle = 180;
  80007da:	23b4      	movs	r3, #180	@ 0xb4
  80007dc:	81fb      	strh	r3, [r7, #14]
-			pulse = 40 + ((120 - 40) * angle) / 180; // mapeo
+			pulse = 40 + ((120 - 40) * angle) / 180; // mapeo 500
  80007de:	89fa      	ldrh	r2, [r7, #14]
  80007e0:	4613      	mov	r3, r2
  80007e2:	009b      	lsls	r3, r3, #2
@@ -767,10 +767,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_PIN)
  80007f4:	1ad3      	subs	r3, r2, r3
  80007f6:	3328      	adds	r3, #40	@ 0x28
  80007f8:	60bb      	str	r3, [r7, #8]
-			__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, pulse); // Configura el ciclo de trabajo a 1000 (Rojo apagado)
+			__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 225); // Configura el ciclo de trabajo a 1000 (Rojo apagado)
  80007fa:	4b0d      	ldr	r3, [pc, #52]	@ (8000830 <HAL_GPIO_EXTI_Callback+0xb0>)
  80007fc:	681b      	ldr	r3, [r3, #0]
- 80007fe:	68ba      	ldr	r2, [r7, #8]
+ 80007fe:	22e1      	movs	r2, #225	@ 0xe1
  8000800:	639a      	str	r2, [r3, #56]	@ 0x38
 		}
 
@@ -884,12 +884,10 @@ int main(void)
 	uint16_t angle = 180; // en grados. se modifica esto
  8000894:	23b4      	movs	r3, #180	@ 0xb4
  8000896:	81fb      	strh	r3, [r7, #14]
-	uint32_t pulse = 40 + ((120 - 40) * angle) / 180; // mapeo
- 8000898:	89fa      	ldrh	r2, [r7, #14]
- 800089a:	4613      	mov	r3, r2
- 800089c:	009b      	lsls	r3, r3, #2
- 800089e:	4413      	add	r3, r2
- 80008a0:	011b      	lsls	r3, r3, #4
+	uint32_t pulse = 40 + ((500 - 40) * angle) / 180; // mapeo
+ 8000898:	89fb      	ldrh	r3, [r7, #14]
+ 800089a:	f44f 72e6 	mov.w	r2, #460	@ 0x1cc
+ 800089e:	fb02 f303 	mul.w	r3, r2, r3
  80008a2:	4a5e      	ldr	r2, [pc, #376]	@ (8000a1c <main+0x1e8>)
  80008a4:	fb82 1203 	smull	r1, r2, r2, r3
  80008a8:	441a      	add	r2, r3
@@ -899,17 +897,17 @@ int main(void)
  80008b0:	3328      	adds	r3, #40	@ 0x28
  80008b2:	60bb      	str	r3, [r7, #8]
 
-	__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, pulse); // Mueve el servo a la posicion inicial de 180º
+	__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 0); // Mueve el servo a la posicion inicial de 180º
  80008b4:	4b58      	ldr	r3, [pc, #352]	@ (8000a18 <main+0x1e4>)
  80008b6:	681b      	ldr	r3, [r3, #0]
- 80008b8:	68ba      	ldr	r2, [r7, #8]
+ 80008b8:	2200      	movs	r2, #0
  80008ba:	639a      	str	r2, [r3, #56]	@ 0x38
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
-    /* USER CODE END WHILE */
-	  // SENSOR SHT85 TEMPERATURA INICIO
-	  if (HAL_GetTick() - lastTimeSHT >= samplingPeriod) { // Leer los sensores cada 200 ms (periodo de muestreo)
+	while (1)
+	  {
+
+		  // SENSOR SHT85 TEMPERATURA INICIO
+		  if (HAL_GetTick() - lastTimeSHT >= samplingPeriod) { // Leer los sensores cada 200 ms (periodo de muestreo)
  80008bc:	f000 fc5a 	bl	8001174 <HAL_GetTick>
  80008c0:	4602      	mov	r2, r0
  80008c2:	4b53      	ldr	r3, [pc, #332]	@ (8000a10 <main+0x1dc>)
@@ -919,21 +917,21 @@ int main(void)
  80008ca:	8812      	ldrh	r2, [r2, #0]
  80008cc:	4293      	cmp	r3, r2
  80008ce:	d321      	bcc.n	8000914 <main+0xe0>
-		  lastTimeSHT = HAL_GetTick(); // Se actualiza referencia
+			  lastTimeSHT = HAL_GetTick(); // Se actualiza referencia
  80008d0:	f000 fc50 	bl	8001174 <HAL_GetTick>
  80008d4:	4603      	mov	r3, r0
  80008d6:	4a4e      	ldr	r2, [pc, #312]	@ (8000a10 <main+0x1dc>)
  80008d8:	6013      	str	r3, [r2, #0]
-		  ReadSHT85(&temperature, &humidity); // Leer sensores
+			  ReadSHT85(&temperature, &humidity); // Leer sensores
  80008da:	4952      	ldr	r1, [pc, #328]	@ (8000a24 <main+0x1f0>)
  80008dc:	4852      	ldr	r0, [pc, #328]	@ (8000a28 <main+0x1f4>)
  80008de:	f7ff fdf3 	bl	80004c8 <ReadSHT85>
-		  calculatorAverageTemperature(temperature);		// Se calculan temperaturas medias
+			  calculatorAverageTemperature(temperature);		// Se calculan temperaturas medias
  80008e2:	4b51      	ldr	r3, [pc, #324]	@ (8000a28 <main+0x1f4>)
  80008e4:	edd3 7a00 	vldr	s15, [r3]
  80008e8:	eeb0 0a67 	vmov.f32	s0, s15
  80008ec:	f7ff fef4 	bl	80006d8 <calculatorAverageTemperature>
-		  float temperatureToCheck = alarmWithActualTemp ? temperature : averageTemperature;
+			  float temperatureToCheck = alarmWithActualTemp ? temperature : averageTemperature;
  80008f0:	4b4e      	ldr	r3, [pc, #312]	@ (8000a2c <main+0x1f8>)
  80008f2:	781b      	ldrb	r3, [r3, #0]
  80008f4:	2b00      	cmp	r3, #0
@@ -944,24 +942,24 @@ int main(void)
  80008fe:	4b4c      	ldr	r3, [pc, #304]	@ (8000a30 <main+0x1fc>)
  8000900:	681b      	ldr	r3, [r3, #0]
  8000902:	607b      	str	r3, [r7, #4]
-		  alarm = setAlarm(temperatureToCheck);      // Verificar alarma. Si se quiere controlar la alarma con la temperatura media. Se activa más tarde
+			  alarm = setAlarm(temperatureToCheck);      // Verificar alarma. Si se quiere controlar la alarma con la temperatura media. Se activa más tarde
  8000904:	ed97 0a01 	vldr	s0, [r7, #4]
  8000908:	f7ff fe48 	bl	800059c <setAlarm>
  800090c:	4603      	mov	r3, r0
  800090e:	461a      	mov	r2, r3
  8000910:	4b48      	ldr	r3, [pc, #288]	@ (8000a34 <main+0x200>)
  8000912:	701a      	strb	r2, [r3, #0]
-	  }
+		  }
 
-	  if (!alarm) { // La alarma se activa pq se supera temperatura maxima
+		  if (!alarm) { // La alarma se activa pq se supera temperatura maxima
  8000914:	4b47      	ldr	r3, [pc, #284]	@ (8000a34 <main+0x200>)
  8000916:	781b      	ldrb	r3, [r3, #0]
  8000918:	f083 0301 	eor.w	r3, r3, #1
  800091c:	b2db      	uxtb	r3, r3
  800091e:	2b00      	cmp	r3, #0
  8000920:	d043      	beq.n	80009aa <main+0x176>
-		  // Incrementa gradualmente la intensidad del led rojo del RGB
-		  if (HAL_GetTick() - lastTimeIncreasingLight >= 20) {
+			  // Incrementa gradualmente la intensidad del led rojo del RGB
+			  if (HAL_GetTick() - lastTimeIncreasingLight >= 20) {
  8000922:	f000 fc27 	bl	8001174 <HAL_GetTick>
  8000926:	4602      	mov	r2, r0
  8000928:	4b3a      	ldr	r3, [pc, #232]	@ (8000a14 <main+0x1e0>)
@@ -969,108 +967,108 @@ int main(void)
  800092c:	1ad3      	subs	r3, r2, r3
  800092e:	2b13      	cmp	r3, #19
  8000930:	d930      	bls.n	8000994 <main+0x160>
-			  lastTimeIncreasingLight = HAL_GetTick();
+				  lastTimeIncreasingLight = HAL_GetTick();
  8000932:	f000 fc1f 	bl	8001174 <HAL_GetTick>
  8000936:	4603      	mov	r3, r0
  8000938:	4a36      	ldr	r2, [pc, #216]	@ (8000a14 <main+0x1e0>)
  800093a:	6013      	str	r3, [r2, #0]
 
-			  if (increasingLight) {
+				  if (increasingLight) {
  800093c:	4b3e      	ldr	r3, [pc, #248]	@ (8000a38 <main+0x204>)
  800093e:	781b      	ldrb	r3, [r3, #0]
  8000940:	2b00      	cmp	r3, #0
  8000942:	d010      	beq.n	8000966 <main+0x132>
-				  duty -= 50; // Decrementar el ciclo de trabajo (lógica inversa)
+					  duty -= 50; // Decrementar el ciclo de trabajo (lógica inversa)
  8000944:	4b3d      	ldr	r3, [pc, #244]	@ (8000a3c <main+0x208>)
  8000946:	881b      	ldrh	r3, [r3, #0]
  8000948:	3b32      	subs	r3, #50	@ 0x32
  800094a:	b29a      	uxth	r2, r3
  800094c:	4b3b      	ldr	r3, [pc, #236]	@ (8000a3c <main+0x208>)
  800094e:	801a      	strh	r2, [r3, #0]
-				  if (duty <= 0) {
+					  if (duty <= 0) {
  8000950:	4b3a      	ldr	r3, [pc, #232]	@ (8000a3c <main+0x208>)
  8000952:	881b      	ldrh	r3, [r3, #0]
  8000954:	2b00      	cmp	r3, #0
  8000956:	d118      	bne.n	800098a <main+0x156>
-					  duty = 0;
+						  duty = 0;
  8000958:	4b38      	ldr	r3, [pc, #224]	@ (8000a3c <main+0x208>)
  800095a:	2200      	movs	r2, #0
  800095c:	801a      	strh	r2, [r3, #0]
-					  // Insertar bocina, aqui llega al pico maximo de luz
-					  increasingLight = false; // Cambiar dirección
+						  // Insertar bocina, aqui llega al pico maximo de luz
+						  increasingLight = false; // Cambiar dirección
  800095e:	4b36      	ldr	r3, [pc, #216]	@ (8000a38 <main+0x204>)
  8000960:	2200      	movs	r2, #0
  8000962:	701a      	strb	r2, [r3, #0]
  8000964:	e011      	b.n	800098a <main+0x156>
-				  }
-			  } else {
-				  duty += 50; // Incrementar el ciclo de trabajo
+					  }
+				  } else {
+					  duty += 50; // Incrementar el ciclo de trabajo
  8000966:	4b35      	ldr	r3, [pc, #212]	@ (8000a3c <main+0x208>)
  8000968:	881b      	ldrh	r3, [r3, #0]
  800096a:	3332      	adds	r3, #50	@ 0x32
  800096c:	b29a      	uxth	r2, r3
  800096e:	4b33      	ldr	r3, [pc, #204]	@ (8000a3c <main+0x208>)
  8000970:	801a      	strh	r2, [r3, #0]
-				  if (duty >= 1000) {
+					  if (duty >= 1000) {
  8000972:	4b32      	ldr	r3, [pc, #200]	@ (8000a3c <main+0x208>)
  8000974:	881b      	ldrh	r3, [r3, #0]
  8000976:	f5b3 7f7a 	cmp.w	r3, #1000	@ 0x3e8
  800097a:	d306      	bcc.n	800098a <main+0x156>
-					  duty = 1000;
+						  duty = 1000;
  800097c:	4b2f      	ldr	r3, [pc, #188]	@ (8000a3c <main+0x208>)
  800097e:	f44f 727a 	mov.w	r2, #1000	@ 0x3e8
  8000982:	801a      	strh	r2, [r3, #0]
-					  increasingLight = true; // Cambiar dirección
+						  increasingLight = true; // Cambiar dirección
  8000984:	4b2c      	ldr	r3, [pc, #176]	@ (8000a38 <main+0x204>)
  8000986:	2201      	movs	r2, #1
  8000988:	701a      	strb	r2, [r3, #0]
+					  }
 				  }
-			  }
 
-			  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, duty); // Ajusta el ciclo de trabajo del led rojo
+				  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, duty); // Ajusta el ciclo de trabajo del led rojo
  800098a:	4b2c      	ldr	r3, [pc, #176]	@ (8000a3c <main+0x208>)
  800098c:	881a      	ldrh	r2, [r3, #0]
  800098e:	4b1f      	ldr	r3, [pc, #124]	@ (8000a0c <main+0x1d8>)
  8000990:	681b      	ldr	r3, [r3, #0]
  8000992:	639a      	str	r2, [r3, #56]	@ 0x38
-		  }
+			  }
 
-		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_RESET); // Encender VENTILADOR
+			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_RESET); // Encender VENTILADOR
  8000994:	2200      	movs	r2, #0
  8000996:	2108      	movs	r1, #8
  8000998:	481b      	ldr	r0, [pc, #108]	@ (8000a08 <main+0x1d4>)
  800099a:	f000 feb1 	bl	8001700 <HAL_GPIO_WritePin>
-		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2, GPIO_PIN_SET); // AMARILLO (ROJO + VERDE)
+			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2, GPIO_PIN_SET); // AMARILLO (ROJO + VERDE)
  800099e:	2201      	movs	r2, #1
  80009a0:	2104      	movs	r1, #4
  80009a2:	4819      	ldr	r0, [pc, #100]	@ (8000a08 <main+0x1d4>)
  80009a4:	f000 feac 	bl	8001700 <HAL_GPIO_WritePin>
  80009a8:	e015      	b.n	80009d6 <main+0x1a2>
 
-	  }
-	  else {
-		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_SET); // Apagar VENTILADOR
+		  }
+		  else {
+			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_SET); // Apagar VENTILADOR
  80009aa:	2201      	movs	r2, #1
  80009ac:	2108      	movs	r1, #8
  80009ae:	4816      	ldr	r0, [pc, #88]	@ (8000a08 <main+0x1d4>)
  80009b0:	f000 fea6 	bl	8001700 <HAL_GPIO_WritePin>
-		  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, 0); // AMARILLO (ROJO + VERDE)
+			  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, 0); // AMARILLO (ROJO + VERDE)
  80009b4:	4b15      	ldr	r3, [pc, #84]	@ (8000a0c <main+0x1d8>)
  80009b6:	681b      	ldr	r3, [r3, #0]
  80009b8:	2200      	movs	r2, #0
  80009ba:	639a      	str	r2, [r3, #56]	@ 0x38
-		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2, GPIO_PIN_RESET); // AMARILLO (ROJO + VERDE)
+			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2, GPIO_PIN_RESET); // AMARILLO (ROJO + VERDE)
  80009bc:	2200      	movs	r2, #0
  80009be:	2104      	movs	r1, #4
  80009c0:	4811      	ldr	r0, [pc, #68]	@ (8000a08 <main+0x1d4>)
  80009c2:	f000 fe9d 	bl	8001700 <HAL_GPIO_WritePin>
-	  }
-	  // SENSOR SHT85 TEMPERATURA FIN
+		  }
+		  // SENSOR SHT85 TEMPERATURA FIN
 
-		// SERVO CON INTERRUPCIONES INICIO
-		while (ISR == 0) {
+			// SERVO CON INTERRUPCIONES INICIO
+			while (ISR == 0) {
  80009c6:	e006      	b.n	80009d6 <main+0x1a2>
-		  contador++;
+			  contador++;
  80009c8:	4b1d      	ldr	r3, [pc, #116]	@ (8000a40 <main+0x20c>)
  80009ca:	781b      	ldrb	r3, [r3, #0]
  80009cc:	b2db      	uxtb	r3, r3
@@ -1078,14 +1076,14 @@ int main(void)
  80009d0:	b2da      	uxtb	r2, r3
  80009d2:	4b1b      	ldr	r3, [pc, #108]	@ (8000a40 <main+0x20c>)
  80009d4:	701a      	strb	r2, [r3, #0]
-		while (ISR == 0) {
+			while (ISR == 0) {
  80009d6:	4b1b      	ldr	r3, [pc, #108]	@ (8000a44 <main+0x210>)
  80009d8:	781b      	ldrb	r3, [r3, #0]
  80009da:	2b00      	cmp	r3, #0
  80009dc:	d0f4      	beq.n	80009c8 <main+0x194>
-	  }
+		  }
 
-	  if (HAL_GetTick() - lastTimeServoMove >= 380) { // Esto impide invertir el sentido de giro cuando ya ha empezado a moverse el servo. 380ms es lo que tarda en pasar de mover de 0 a 180º
+		  if (HAL_GetTick() - lastTimeServoMove >= 380) { // Esto impide invertir el sentido de giro cuando ya ha empezado a moverse el servo. 380ms es lo que tarda en pasar de mover de 0 a 180º
  80009de:	f000 fbc9 	bl	8001174 <HAL_GetTick>
  80009e2:	4602      	mov	r2, r0
  80009e4:	4b18      	ldr	r3, [pc, #96]	@ (8000a48 <main+0x214>)
@@ -1093,22 +1091,22 @@ int main(void)
  80009e8:	1ad3      	subs	r3, r2, r3
  80009ea:	f5b3 7fbe 	cmp.w	r3, #380	@ 0x17c
  80009ee:	d307      	bcc.n	8000a00 <main+0x1cc>
-		  lastTimeServoMove = HAL_GetTick(); // Se actualiza referencia
+			  lastTimeServoMove = HAL_GetTick(); // Se actualiza referencia
  80009f0:	f000 fbc0 	bl	8001174 <HAL_GetTick>
  80009f4:	4603      	mov	r3, r0
  80009f6:	4a14      	ldr	r2, [pc, #80]	@ (8000a48 <main+0x214>)
  80009f8:	6013      	str	r3, [r2, #0]
-		  ISR = 0;
+			  ISR = 0;
  80009fa:	4b12      	ldr	r3, [pc, #72]	@ (8000a44 <main+0x210>)
  80009fc:	2200      	movs	r2, #0
  80009fe:	701a      	strb	r2, [r3, #0]
-	  }
+		  }
 
-	  contador = 0;
+		  contador = 0;
  8000a00:	4b0f      	ldr	r3, [pc, #60]	@ (8000a40 <main+0x20c>)
  8000a02:	2200      	movs	r2, #0
  8000a04:	701a      	strb	r2, [r3, #0]
-	  if (HAL_GetTick() - lastTimeSHT >= samplingPeriod) { // Leer los sensores cada 200 ms (periodo de muestreo)
+		  if (HAL_GetTick() - lastTimeSHT >= samplingPeriod) { // Leer los sensores cada 200 ms (periodo de muestreo)
  8000a06:	e759      	b.n	80008bc <main+0x88>
  8000a08:	40020000 	.word	0x40020000
  8000a0c:	20000090 	.word	0x20000090
@@ -1498,92 +1496,91 @@ static void MX_TIM3_Init(void)
  8000c4e:	4b22      	ldr	r3, [pc, #136]	@ (8000cd8 <MX_TIM3_Init+0xac>)
  8000c50:	4a22      	ldr	r2, [pc, #136]	@ (8000cdc <MX_TIM3_Init+0xb0>)
  8000c52:	601a      	str	r2, [r3, #0]
-  htim3.Init.Prescaler = 99;
+  htim3.Init.Prescaler = 480;
  8000c54:	4b20      	ldr	r3, [pc, #128]	@ (8000cd8 <MX_TIM3_Init+0xac>)
- 8000c56:	2263      	movs	r2, #99	@ 0x63
- 8000c58:	605a      	str	r2, [r3, #4]
+ 8000c56:	f44f 72f0 	mov.w	r2, #480	@ 0x1e0
+ 8000c5a:	605a      	str	r2, [r3, #4]
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
- 8000c5a:	4b1f      	ldr	r3, [pc, #124]	@ (8000cd8 <MX_TIM3_Init+0xac>)
- 8000c5c:	2200      	movs	r2, #0
- 8000c5e:	609a      	str	r2, [r3, #8]
-  htim3.Init.Period = 999;
- 8000c60:	4b1d      	ldr	r3, [pc, #116]	@ (8000cd8 <MX_TIM3_Init+0xac>)
- 8000c62:	f240 32e7 	movw	r2, #999	@ 0x3e7
- 8000c66:	60da      	str	r2, [r3, #12]
+ 8000c5c:	4b1e      	ldr	r3, [pc, #120]	@ (8000cd8 <MX_TIM3_Init+0xac>)
+ 8000c5e:	2200      	movs	r2, #0
+ 8000c60:	609a      	str	r2, [r3, #8]
+  htim3.Init.Period = 2000;
+ 8000c62:	4b1d      	ldr	r3, [pc, #116]	@ (8000cd8 <MX_TIM3_Init+0xac>)
+ 8000c64:	f44f 62fa 	mov.w	r2, #2000	@ 0x7d0
+ 8000c68:	60da      	str	r2, [r3, #12]
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
- 8000c68:	4b1b      	ldr	r3, [pc, #108]	@ (8000cd8 <MX_TIM3_Init+0xac>)
- 8000c6a:	2200      	movs	r2, #0
- 8000c6c:	611a      	str	r2, [r3, #16]
+ 8000c6a:	4b1b      	ldr	r3, [pc, #108]	@ (8000cd8 <MX_TIM3_Init+0xac>)
+ 8000c6c:	2200      	movs	r2, #0
+ 8000c6e:	611a      	str	r2, [r3, #16]
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
- 8000c6e:	4b1a      	ldr	r3, [pc, #104]	@ (8000cd8 <MX_TIM3_Init+0xac>)
- 8000c70:	2200      	movs	r2, #0
- 8000c72:	619a      	str	r2, [r3, #24]
+ 8000c70:	4b19      	ldr	r3, [pc, #100]	@ (8000cd8 <MX_TIM3_Init+0xac>)
+ 8000c72:	2200      	movs	r2, #0
+ 8000c74:	619a      	str	r2, [r3, #24]
   if (HAL_TIM_PWM_Init(&htim3) != HAL_OK)
- 8000c74:	4818      	ldr	r0, [pc, #96]	@ (8000cd8 <MX_TIM3_Init+0xac>)
- 8000c76:	f002 f9f3 	bl	8003060 <HAL_TIM_PWM_Init>
- 8000c7a:	4603      	mov	r3, r0
- 8000c7c:	2b00      	cmp	r3, #0
- 8000c7e:	d001      	beq.n	8000c84 <MX_TIM3_Init+0x58>
+ 8000c76:	4818      	ldr	r0, [pc, #96]	@ (8000cd8 <MX_TIM3_Init+0xac>)
+ 8000c78:	f002 f9f2 	bl	8003060 <HAL_TIM_PWM_Init>
+ 8000c7c:	4603      	mov	r3, r0
+ 8000c7e:	2b00      	cmp	r3, #0
+ 8000c80:	d001      	beq.n	8000c86 <MX_TIM3_Init+0x5a>
   {
     Error_Handler();
- 8000c80:	f000 f886 	bl	8000d90 <Error_Handler>
+ 8000c82:	f000 f885 	bl	8000d90 <Error_Handler>
   }
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
- 8000c84:	2300      	movs	r3, #0
- 8000c86:	623b      	str	r3, [r7, #32]
+ 8000c86:	2300      	movs	r3, #0
+ 8000c88:	623b      	str	r3, [r7, #32]
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
- 8000c88:	2300      	movs	r3, #0
- 8000c8a:	627b      	str	r3, [r7, #36]	@ 0x24
+ 8000c8a:	2300      	movs	r3, #0
+ 8000c8c:	627b      	str	r3, [r7, #36]	@ 0x24
   if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
- 8000c8c:	f107 0320 	add.w	r3, r7, #32
- 8000c90:	4619      	mov	r1, r3
- 8000c92:	4811      	ldr	r0, [pc, #68]	@ (8000cd8 <MX_TIM3_Init+0xac>)
- 8000c94:	f002 ff06 	bl	8003aa4 <HAL_TIMEx_MasterConfigSynchronization>
- 8000c98:	4603      	mov	r3, r0
- 8000c9a:	2b00      	cmp	r3, #0
- 8000c9c:	d001      	beq.n	8000ca2 <MX_TIM3_Init+0x76>
+ 8000c8e:	f107 0320 	add.w	r3, r7, #32
+ 8000c92:	4619      	mov	r1, r3
+ 8000c94:	4810      	ldr	r0, [pc, #64]	@ (8000cd8 <MX_TIM3_Init+0xac>)
+ 8000c96:	f002 ff05 	bl	8003aa4 <HAL_TIMEx_MasterConfigSynchronization>
+ 8000c9a:	4603      	mov	r3, r0
+ 8000c9c:	2b00      	cmp	r3, #0
+ 8000c9e:	d001      	beq.n	8000ca4 <MX_TIM3_Init+0x78>
   {
     Error_Handler();
- 8000c9e:	f000 f877 	bl	8000d90 <Error_Handler>
+ 8000ca0:	f000 f876 	bl	8000d90 <Error_Handler>
   }
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
- 8000ca2:	2360      	movs	r3, #96	@ 0x60
- 8000ca4:	607b      	str	r3, [r7, #4]
+ 8000ca4:	2360      	movs	r3, #96	@ 0x60
+ 8000ca6:	607b      	str	r3, [r7, #4]
   sConfigOC.Pulse = 0;
- 8000ca6:	2300      	movs	r3, #0
- 8000ca8:	60bb      	str	r3, [r7, #8]
+ 8000ca8:	2300      	movs	r3, #0
+ 8000caa:	60bb      	str	r3, [r7, #8]
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
- 8000caa:	2300      	movs	r3, #0
- 8000cac:	60fb      	str	r3, [r7, #12]
+ 8000cac:	2300      	movs	r3, #0
+ 8000cae:	60fb      	str	r3, [r7, #12]
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
- 8000cae:	2300      	movs	r3, #0
- 8000cb0:	617b      	str	r3, [r7, #20]
+ 8000cb0:	2300      	movs	r3, #0
+ 8000cb2:	617b      	str	r3, [r7, #20]
   if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
- 8000cb2:	1d3b      	adds	r3, r7, #4
- 8000cb4:	2204      	movs	r2, #4
- 8000cb6:	4619      	mov	r1, r3
- 8000cb8:	4807      	ldr	r0, [pc, #28]	@ (8000cd8 <MX_TIM3_Init+0xac>)
- 8000cba:	f002 fbc1 	bl	8003440 <HAL_TIM_PWM_ConfigChannel>
- 8000cbe:	4603      	mov	r3, r0
- 8000cc0:	2b00      	cmp	r3, #0
- 8000cc2:	d001      	beq.n	8000cc8 <MX_TIM3_Init+0x9c>
+ 8000cb4:	1d3b      	adds	r3, r7, #4
+ 8000cb6:	2204      	movs	r2, #4
+ 8000cb8:	4619      	mov	r1, r3
+ 8000cba:	4807      	ldr	r0, [pc, #28]	@ (8000cd8 <MX_TIM3_Init+0xac>)
+ 8000cbc:	f002 fbc0 	bl	8003440 <HAL_TIM_PWM_ConfigChannel>
+ 8000cc0:	4603      	mov	r3, r0
+ 8000cc2:	2b00      	cmp	r3, #0
+ 8000cc4:	d001      	beq.n	8000cca <MX_TIM3_Init+0x9e>
   {
     Error_Handler();
- 8000cc4:	f000 f864 	bl	8000d90 <Error_Handler>
+ 8000cc6:	f000 f863 	bl	8000d90 <Error_Handler>
   }
   /* USER CODE BEGIN TIM3_Init 2 */
 
   /* USER CODE END TIM3_Init 2 */
   HAL_TIM_MspPostInit(&htim3);
- 8000cc8:	4803      	ldr	r0, [pc, #12]	@ (8000cd8 <MX_TIM3_Init+0xac>)
- 8000cca:	f000 f913 	bl	8000ef4 <HAL_TIM_MspPostInit>
+ 8000cca:	4803      	ldr	r0, [pc, #12]	@ (8000cd8 <MX_TIM3_Init+0xac>)
+ 8000ccc:	f000 f912 	bl	8000ef4 <HAL_TIM_MspPostInit>
 
 }
- 8000cce:	bf00      	nop
- 8000cd0:	3728      	adds	r7, #40	@ 0x28
- 8000cd2:	46bd      	mov	sp, r7
- 8000cd4:	bd80      	pop	{r7, pc}
- 8000cd6:	bf00      	nop
+ 8000cd0:	bf00      	nop
+ 8000cd2:	3728      	adds	r7, #40	@ 0x28
+ 8000cd4:	46bd      	mov	sp, r7
+ 8000cd6:	bd80      	pop	{r7, pc}
  8000cd8:	200000d8 	.word	0x200000d8
  8000cdc:	40000400 	.word	0x40000400
 
@@ -2311,104 +2308,46 @@ void SystemInit(void)
  8001050:	e000ed00 	.word	0xe000ed00
 
 08001054 <Reset_Handler>:
-
-    .section  .text.Reset_Handler
-  .weak  Reset_Handler
-  .type  Reset_Handler, %function
-Reset_Handler:  
-  ldr   sp, =_estack    		 /* set stack pointer */
  8001054:	f8df d034 	ldr.w	sp, [pc, #52]	@ 800108c <LoopFillZerobss+0xe>
-
-/* Call the clock system initialization function.*/
-  bl  SystemInit   
  8001058:	f7ff ffea 	bl	8001030 <SystemInit>
-
-/* Copy the data segment initializers from flash to SRAM */  
-  ldr r0, =_sdata
  800105c:	480c      	ldr	r0, [pc, #48]	@ (8001090 <LoopFillZerobss+0x12>)
-  ldr r1, =_edata
  800105e:	490d      	ldr	r1, [pc, #52]	@ (8001094 <LoopFillZerobss+0x16>)
-  ldr r2, =_sidata
  8001060:	4a0d      	ldr	r2, [pc, #52]	@ (8001098 <LoopFillZerobss+0x1a>)
-  movs r3, #0
  8001062:	2300      	movs	r3, #0
-  b LoopCopyDataInit
  8001064:	e002      	b.n	800106c <LoopCopyDataInit>
 
 08001066 <CopyDataInit>:
-
-CopyDataInit:
-  ldr r4, [r2, r3]
  8001066:	58d4      	ldr	r4, [r2, r3]
-  str r4, [r0, r3]
  8001068:	50c4      	str	r4, [r0, r3]
-  adds r3, r3, #4
  800106a:	3304      	adds	r3, #4
 
 0800106c <LoopCopyDataInit>:
-
-LoopCopyDataInit:
-  adds r4, r0, r3
  800106c:	18c4      	adds	r4, r0, r3
-  cmp r4, r1
  800106e:	428c      	cmp	r4, r1
-  bcc CopyDataInit
  8001070:	d3f9      	bcc.n	8001066 <CopyDataInit>
-  
-/* Zero fill the bss segment. */
-  ldr r2, =_sbss
  8001072:	4a0a      	ldr	r2, [pc, #40]	@ (800109c <LoopFillZerobss+0x1e>)
-  ldr r4, =_ebss
  8001074:	4c0a      	ldr	r4, [pc, #40]	@ (80010a0 <LoopFillZerobss+0x22>)
-  movs r3, #0
  8001076:	2300      	movs	r3, #0
-  b LoopFillZerobss
  8001078:	e001      	b.n	800107e <LoopFillZerobss>
 
 0800107a <FillZerobss>:
-
-FillZerobss:
-  str  r3, [r2]
  800107a:	6013      	str	r3, [r2, #0]
-  adds r2, r2, #4
  800107c:	3204      	adds	r2, #4
 
 0800107e <LoopFillZerobss>:
-
-LoopFillZerobss:
-  cmp r2, r4
  800107e:	42a2      	cmp	r2, r4
-  bcc FillZerobss
  8001080:	d3fb      	bcc.n	800107a <FillZerobss>
-
-/* Call static constructors */
-    bl __libc_init_array
  8001082:	f002 fd99 	bl	8003bb8 <__libc_init_array>
-/* Call the application's entry point.*/
-  bl  main
  8001086:	f7ff fbd5 	bl	8000834 <main>
-  bx  lr    
  800108a:	4770      	bx	lr
-  ldr   sp, =_estack    		 /* set stack pointer */
  800108c:	20020000 	.word	0x20020000
-  ldr r0, =_sdata
  8001090:	20000000 	.word	0x20000000
-  ldr r1, =_edata
  8001094:	20000020 	.word	0x20000020
-  ldr r2, =_sidata
  8001098:	08003c40 	.word	0x08003c40
-  ldr r2, =_sbss
  800109c:	20000020 	.word	0x20000020
-  ldr r4, =_ebss
  80010a0:	20000158 	.word	0x20000158
 
 080010a4 <ADC_IRQHandler>:
- * @retval None       
-*/
-    .section  .text.Default_Handler,"ax",%progbits
-Default_Handler:
-Infinite_Loop:
-  b  Infinite_Loop
  80010a4:	e7fe      	b.n	80010a4 <ADC_IRQHandler>
 	...
 

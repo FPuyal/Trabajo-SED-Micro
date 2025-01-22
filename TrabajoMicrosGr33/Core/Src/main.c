@@ -181,12 +181,12 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_PIN)
 		lastTimeServoMove = HAL_GetTick(); // Se actualiza referencia
 		if(state == 0){
 			angle = 0;
-			pulse = 40 + ((120 - 40) * angle) / 180; // mapeo
-			__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, pulse); // Configura el ciclo de trabajo a 1000 (Rojo apagado)
+			pulse = 40 + ((120 - 40) * angle) / 180; // mapeo 40
+			__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 80); // Configura el ciclo de trabajo a 1000 (Rojo apagado)
 		} else{
 			angle = 180;
-			pulse = 40 + ((120 - 40) * angle) / 180; // mapeo
-			__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, pulse); // Configura el ciclo de trabajo a 1000 (Rojo apagado)
+			pulse = 40 + ((120 - 40) * angle) / 180; // mapeo 500
+			__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 225); // Configura el ciclo de trabajo a 1000 (Rojo apagado)
 		}
 
 		if(state==0){state=1;}
@@ -253,73 +253,74 @@ int main(void)
 	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
 
 	uint16_t angle = 180; // en grados. se modifica esto
-	uint32_t pulse = 40 + ((120 - 40) * angle) / 180; // mapeo
+	uint32_t pulse = 40 + ((500 - 40) * angle) / 180; // mapeo
 
-	__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, pulse); // Mueve el servo a la posicion inicial de 180º
+	__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 0); // Mueve el servo a la posicion inicial de 180º
 	// SERVO CON INTERRUPCIONES FIN
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
-    /* USER CODE END WHILE */
-	  // SENSOR SHT85 TEMPERATURA INICIO
-	  if (HAL_GetTick() - lastTimeSHT >= samplingPeriod) { // Leer los sensores cada 200 ms (periodo de muestreo)
-		  lastTimeSHT = HAL_GetTick(); // Se actualiza referencia
-		  ReadSHT85(&temperature, &humidity); // Leer sensores
-		  calculatorAverageTemperature(temperature);		// Se calculan temperaturas medias
-		  float temperatureToCheck = alarmWithActualTemp ? temperature : averageTemperature;
-		  alarm = setAlarm(temperatureToCheck);      // Verificar alarma. Si se quiere controlar la alarma con la temperatura media. Se activa más tarde
-	  }
+	while (1)
+	  {
 
-	  if (!alarm) { // La alarma se activa pq se supera temperatura maxima
-		  // Incrementa gradualmente la intensidad del led rojo del RGB
-		  if (HAL_GetTick() - lastTimeIncreasingLight >= 20) {
-			  lastTimeIncreasingLight = HAL_GetTick();
-
-			  if (increasingLight) {
-				  duty -= 50; // Decrementar el ciclo de trabajo (lógica inversa)
-				  if (duty <= 0) {
-					  duty = 0;
-					  // Insertar bocina, aqui llega al pico maximo de luz
-					  increasingLight = false; // Cambiar dirección
-				  }
-			  } else {
-				  duty += 50; // Incrementar el ciclo de trabajo
-				  if (duty >= 1000) {
-					  duty = 1000;
-					  increasingLight = true; // Cambiar dirección
-				  }
-			  }
-
-			  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, duty); // Ajusta el ciclo de trabajo del led rojo
+		  // SENSOR SHT85 TEMPERATURA INICIO
+		  if (HAL_GetTick() - lastTimeSHT >= samplingPeriod) { // Leer los sensores cada 200 ms (periodo de muestreo)
+			  lastTimeSHT = HAL_GetTick(); // Se actualiza referencia
+			  ReadSHT85(&temperature, &humidity); // Leer sensores
+			  calculatorAverageTemperature(temperature);		// Se calculan temperaturas medias
+			  float temperatureToCheck = alarmWithActualTemp ? temperature : averageTemperature;
+			  alarm = setAlarm(temperatureToCheck);      // Verificar alarma. Si se quiere controlar la alarma con la temperatura media. Se activa más tarde
 		  }
 
-		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_RESET); // Encender VENTILADOR
-		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2, GPIO_PIN_SET); // AMARILLO (ROJO + VERDE)
+		  if (!alarm) { // La alarma se activa pq se supera temperatura maxima
+			  // Incrementa gradualmente la intensidad del led rojo del RGB
+			  if (HAL_GetTick() - lastTimeIncreasingLight >= 20) {
+				  lastTimeIncreasingLight = HAL_GetTick();
 
-	  }
-	  else {
-		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_SET); // Apagar VENTILADOR
-		  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, 0); // AMARILLO (ROJO + VERDE)
-		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2, GPIO_PIN_RESET); // AMARILLO (ROJO + VERDE)
-	  }
-	  // SENSOR SHT85 TEMPERATURA FIN
+				  if (increasingLight) {
+					  duty -= 50; // Decrementar el ciclo de trabajo (lógica inversa)
+					  if (duty <= 0) {
+						  duty = 0;
+						  // Insertar bocina, aqui llega al pico maximo de luz
+						  increasingLight = false; // Cambiar dirección
+					  }
+				  } else {
+					  duty += 50; // Incrementar el ciclo de trabajo
+					  if (duty >= 1000) {
+						  duty = 1000;
+						  increasingLight = true; // Cambiar dirección
+					  }
+				  }
 
-		// SERVO CON INTERRUPCIONES INICIO
-		while (ISR == 0) {
-		  contador++;
-	  }
+				  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, duty); // Ajusta el ciclo de trabajo del led rojo
+			  }
 
-	  if (HAL_GetTick() - lastTimeServoMove >= 380) { // Esto impide invertir el sentido de giro cuando ya ha empezado a moverse el servo. 380ms es lo que tarda en pasar de mover de 0 a 180º
-		  lastTimeServoMove = HAL_GetTick(); // Se actualiza referencia
-		  ISR = 0;
-	  }
+			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_RESET); // Encender VENTILADOR
+			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2, GPIO_PIN_SET); // AMARILLO (ROJO + VERDE)
 
-	  contador = 0;
-		// SERVO CON INTERRUPCIONES FIN
+		  }
+		  else {
+			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_SET); // Apagar VENTILADOR
+			  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, 0); // AMARILLO (ROJO + VERDE)
+			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2, GPIO_PIN_RESET); // AMARILLO (ROJO + VERDE)
+		  }
+		  // SENSOR SHT85 TEMPERATURA FIN
+
+			// SERVO CON INTERRUPCIONES INICIO
+			while (ISR == 0) {
+			  contador++;
+		  }
+
+		  if (HAL_GetTick() - lastTimeServoMove >= 380) { // Esto impide invertir el sentido de giro cuando ya ha empezado a moverse el servo. 380ms es lo que tarda en pasar de mover de 0 a 180º
+			  lastTimeServoMove = HAL_GetTick(); // Se actualiza referencia
+			  ISR = 0;
+		  }
+
+		  contador = 0;
+			// SERVO CON INTERRUPCIONES FIN
+    /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
   }
@@ -474,9 +475,9 @@ static void MX_TIM3_Init(void)
 
   /* USER CODE END TIM3_Init 1 */
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 99;
+  htim3.Init.Prescaler = 480;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 999;
+  htim3.Init.Period = 2000;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_PWM_Init(&htim3) != HAL_OK)

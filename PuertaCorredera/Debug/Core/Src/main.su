@@ -1,4 +1,6 @@
-../Core/Src/main.c:64:5:main	8	static
-../Core/Src/main.c:119:6:SystemClock_Config	88	static
-../Core/Src/main.c:166:13:MX_GPIO_Init	32	static
-../Core/Src/main.c:203:6:Error_Handler	4	static,ignoring_inline_asm
+../Core/Src/main.c:68:5:main	8	static
+../Core/Src/main.c:141:6:SystemClock_Config	88	static
+../Core/Src/main.c:188:13:MX_GPIO_Init	40	static
+../Core/Src/main.c:234:7:HC_SR04_ReadDistance	24	static
+../Core/Src/main.c:274:6:DWT_Delay_us	24	static
+../Core/Src/main.c:290:6:Error_Handler	4	static,ignoring_inline_asm

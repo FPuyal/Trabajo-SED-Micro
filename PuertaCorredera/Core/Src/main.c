@@ -42,6 +42,8 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+float distancia = 100.0f;
+int abierta = 0;
 
 /* USER CODE END PV */
 
@@ -49,6 +51,8 @@
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 /* USER CODE BEGIN PFP */
+void DWT_Delay_us(uint32_t us);
+float HC_SR04_ReadDistance(void); // Función para medir la distancia del sensor
 
 /* USER CODE END PFP */
 
@@ -74,6 +78,12 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
+  // Habilitar el TRC (Trace Control)
+  CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+  // Reiniciar el contador de ciclos
+  DWT->CYCCNT = 0;
+  // Habilitar el contador
+  DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 
   /* USER CODE END Init */
 
@@ -97,22 +107,29 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 1);
-	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 0);
-	  HAL_Delay(1000);
-	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0);
-	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 1);
-	  HAL_Delay(1000);
-	  if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_3) == 0){ // cuando se active el primer fin de carrera
+	  /* Medir la distancia */
+	  distancia = HC_SR04_ReadDistance();
+
+	  if(distancia <= 10 && abierta == 0){
+		  while(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_3) == 1){ // cuando se active el primer fin de carrera
+			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 1);
+			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 0);
+		  }
+		  abierta = 1;
+	  }
+	  distancia = HC_SR04_ReadDistance();
+	  if(distancia <= 10 && abierta == 1){
+		  while(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_2) == 1){ // cuando se active el primer fin de carrera
+			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0);
+			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 1);
+		  }
+		  abierta = 0;
+	  }
+	  else{
 		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 1);
 		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 1);
-		  HAL_Delay(1000);
 	  }
-	  if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4) == 0){ // cuando se active el segundo fin de carrera
-	  		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 1);
-	  		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 1);
-	  		  HAL_Delay(1000);
-	  	  }
+	  HAL_Delay(100);
   }
   /* USER CODE END 3 */
 }
@@ -139,7 +156,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
-  RCC_OscInitStruct.PLL.PLLM = 8;
+  RCC_OscInitStruct.PLL.PLLM = 16;
   RCC_OscInitStruct.PLL.PLLN = 336;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
   RCC_OscInitStruct.PLL.PLLQ = 7;
@@ -176,6 +193,7 @@ static void MX_GPIO_Init(void)
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOC_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0|GPIO_PIN_1, GPIO_PIN_RESET);
@@ -187,17 +205,81 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PA3 PA4 */
-  GPIO_InitStruct.Pin = GPIO_PIN_3|GPIO_PIN_4;
+  /*Configure GPIO pins : PA2 PA3 */
+  GPIO_InitStruct.Pin = GPIO_PIN_2|GPIO_PIN_3;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_RESET);
+
+  /* PC0 como salida (Trig) */
+  GPIO_InitStruct.Pin   = GPIO_PIN_0;
+  GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull  = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /* PC1 como entrada (Echo) */
+  GPIO_InitStruct.Pin   = GPIO_PIN_1;
+  GPIO_InitStruct.Mode  = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull  = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
+float HC_SR04_ReadDistance(void)
+{
+    uint32_t tiempoEcho_us = 0;
+    float distancia_cm = 0.0f;
+
+    // 1) Generar pulso de 10 us en TRIG (PC0)
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_RESET);
+    DWT_Delay_us(2);      // Pequeño retraso
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_SET);
+    DWT_Delay_us(10);     // Pulso de 10 us
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_RESET);
+
+    // 2) Esperar a que Echo (PC1) se ponga en alto
+    while (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_1) == GPIO_PIN_RESET);
+
+    // Iniciamos conteo de tiempo
+    uint32_t startTick = DWT->CYCCNT;
+
+    // 3) Esperar a que Echo se ponga en bajo
+    while (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_1) == GPIO_PIN_SET);
+
+    // Fin de la medición
+    uint32_t endTick = DWT->CYCCNT;
+
+    // 4) Calcular duración en microsegundos
+    //    Suponiendo SystemCoreClock = 168 MHz
+    //    1 tick DWT ~ 1/168e6 s => us = ticks / (168e6/1e6)
+    tiempoEcho_us = (uint32_t)((endTick - startTick) / (SystemCoreClock / 1000000.0f));
+
+    // 5) Calcular distancia en cm
+    //    Distancia (cm) ≈ tiempoEcho_us / 58
+    distancia_cm = (float)tiempoEcho_us / 58.0f;
+
+    return distancia_cm;
+}
+
+/**
+  * @brief Retardo en microsegundos usando DWT
+  * @param us: microsegundos a esperar
+  */
+void DWT_Delay_us(uint32_t us)
+{
+    // Valor inicial de conteo
+    uint32_t startTick = DWT->CYCCNT;
+    // Calcular cuántos ticks de CPU corresponden a "us" microsegundos
+    uint32_t ticks = us * (SystemCoreClock / 1000000UL);
+    // Esperar hasta que se cumpla
+    while ((DWT->CYCCNT - startTick) < ticks);
+}
 
 /* USER CODE END 4 */
 

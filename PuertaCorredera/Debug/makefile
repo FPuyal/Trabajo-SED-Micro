@@ -60,8 +60,8 @@ all: main-build
 main-build: PuertaCorredera.elf secondary-outputs
 
 # Tool invocations
-PuertaCorredera.elf PuertaCorredera.map: $(OBJS) $(USER_OBJS) C:\Users\fpuya\STM32CubeIDE\workspace_1.17.0\PuertaCorredera\STM32F407VGTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "PuertaCorredera.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\fpuya\STM32CubeIDE\workspace_1.17.0\PuertaCorredera\STM32F407VGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="PuertaCorredera.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+PuertaCorredera.elf PuertaCorredera.map: $(OBJS) $(USER_OBJS) C:\Users\fpuya\SED\Trabajo-SED-Micro\PuertaCorredera\STM32F407VGTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "PuertaCorredera.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\fpuya\SED\Trabajo-SED-Micro\PuertaCorredera\STM32F407VGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="PuertaCorredera.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

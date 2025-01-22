@@ -128,13 +128,19 @@ void calculatorAverageTemperature(float newTemperature);
 // SERVO CON INTERRUPCIONES INICIO
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_PIN)
 {
+	uint16_t angle; // en grados. se modifica esto
+	uint32_t pulse; // mapeo
 
 	if(GPIO_PIN == GPIO_PIN_0 && ISR == 0){
 		ISR = 1; // Se activa la bandera o flag
 		lastTimeServoMove = HAL_GetTick(); // Se actualiza referencia
 		if(state == 0){
+			angle = 0;
+			pulse = 40 + ((120 - 40) * angle) / 180; // mapeo 40
 			__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 160); // Configura el ciclo de trabajo a 1000 (Rojo apagado)
 		} else{
+			angle = 180;
+			pulse = 40 + ((120 - 40) * angle) / 180; // mapeo 500
 			__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 240); // Configura el ciclo de trabajo a 1000 (Rojo apagado)
 		}
 
@@ -206,6 +212,9 @@ int main(void)
 
 	// SERVO CON INTERRUPCIONES INICIO
 	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
+
+	uint16_t angle = 180; // en grados. se modifica esto
+	uint32_t pulse = 40 + ((500 - 40) * angle) / 180; // mapeo
 
 	__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 0); // Mueve el servo a la posicion inicial de 180º
 	// SERVO CON INTERRUPCIONES FIN

@@ -133,8 +133,12 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_PIN)
 		ISR = 1; // Se activa la bandera o flag
 		lastTimeServoMove = HAL_GetTick(); // Se actualiza referencia
 		if(state == 0){
+			angle = 0;
+			pulse = 40 + ((120 - 40) * angle) / 180; // mapeo 40
 			__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 160); // Configura el ciclo de trabajo a 1000 (Rojo apagado)
 		} else{
+			angle = 180;
+			pulse = 40 + ((120 - 40) * angle) / 180; // mapeo 500
 			__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 240); // Configura el ciclo de trabajo a 1000 (Rojo apagado)
 		}
 

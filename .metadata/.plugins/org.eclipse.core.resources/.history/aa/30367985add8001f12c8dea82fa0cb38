@@ -32,7 +32,6 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define USS_THRESHOLD 20 // distancia en cm que tiene que detectar el sesnro de la puerta
-#define USS_TIME_THRESHOLD 1000 // tiempo de espera para que la persona entre al museo
 
 /* USER CODE END PD */
 
@@ -44,7 +43,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-uint32_t tiempoRef;
+int abierta = 0;
 
 /* USER CODE END PV */
 
@@ -109,24 +108,25 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 
-	  if(HC_SR04_ReadDistance() <= USS_THRESHOLD && HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_2) == 0 && (HAL_GetTick() - tiempoRef) >= USS_TIME_THRESHOLD){ // si se detecta a alquien en la puerta y esta está cerrada
-		  if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_3) == 1){ // cuando se active el primer fin de carrera
+	  if(HC_SR04_ReadDistance() <= USS_THRESHOLD && abierta == 0){
+		  while(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_3) == 1){ // cuando se active el primer fin de carrera
 			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 1);
 			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 0);
-			  tiempoRef = HAL_GetTick();
 		  }
+		  abierta = 1;
 	  }
-	  if(HC_SR04_ReadDistance() <= USS_THRESHOLD && HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_3) == 0 && (HAL_GetTick() - tiempoRef) >= USS_TIME_THRESHOLD){ // si se detecta a alquien en la puerta y esta está abierta
-		  if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_2) == 1){ // cuando se active el primer fin de carrera
+	  if(HC_SR04_ReadDistance() <= USS_THRESHOLD && abierta == 1){
+		  while(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_2) == 1){ // cuando se active el primer fin de carrera
 			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0);
 			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 1);
-			  tiempoRef = HAL_GetTick();
 		  }
+		  abierta = 0;
 	  }
 	  else{
 		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 1);
 		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 1);
 	  }
+	  HAL_Delay(100);
   }
   /* USER CODE END 3 */
 }
@@ -276,10 +276,6 @@ void DWT_Delay_us(uint32_t us)
     uint32_t ticks = us * (SystemCoreClock / 1000000UL);
     // Esperar hasta que se cumpla
     while ((DWT->CYCCNT - startTick) < ticks);
-}
-
-int flancoUSS(){
-
 }
 
 /* USER CODE END 4 */

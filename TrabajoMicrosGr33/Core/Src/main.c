@@ -37,6 +37,10 @@
 
 // Comando para iniciar la medición
 #define SHT85_CMD_MEASURE_HIGHREP 0x2400
+
+#define USS_THRESHOLD 20 // distancia en cm que tiene que detectar el sesnro de la puerta
+#define USS_TIME_THRESHOLD 1000 // tiempo de espera para que la persona entre al museo
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -51,6 +55,14 @@ TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 
 /* USER CODE BEGIN PV */
+
+uint32_t tiempoRef;
+
+float distancia = 0.0f;
+uint8_t led_rojo_encendido = 0;  // Bandera para indicar si el LED rojo está encendido
+uint32_t tiempo_inicio_led_rojo = 0; // Almacena el tiempo de encendido del LED rojo
+
+
 //Variables GLOBALES:
 // Variables USUARIO INICIO. Para ajustar tiempos de muestreo de temperatura
 uint16_t samplingPeriod = 200; // tiempo de muestreo de temperaturas (en ms)
@@ -97,77 +109,21 @@ static void MX_I2C1_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM3_Init(void);
 /* USER CODE BEGIN PFP */
+void DWT_Delay_us(uint32_t us);
+float HC_SR041_ReadDistance(void); // Función para medir la distancia del sensor
+float HC_SR042_ReadDistance(void); // Función para medir la distancia del sensor
+void LED_Red_On(void);
+void LED_Green_On(void);
+void LED_Blue_On(void);
+void LED_All_Off(void);
+
 
 // SENSOR SHT85 TEMPERATURA INICIO
-void ReadSHT85(float *temperature, float *humidity) {
-    uint8_t cmd[2] = {SHT85_CMD_MEASURE_HIGHREP >> 8, SHT85_CMD_MEASURE_HIGHREP & 0xFF};
-    uint8_t data[6];
+void ReadSHT85(float *temperature, float *humidity);
 
+bool setAlarm(float temp);
 
-    // Enviar el comando para iniciar la medición
-    HAL_I2C_Master_Transmit(&hi2c1, SHT85_I2C_ADDR, cmd, 2, HAL_MAX_DELAY);
-
-    // Esperar unos 10 ms para completar la medición
-    HAL_Delay(20);
-
-    // Leer los 6 bytes de datos
-    HAL_I2C_Master_Receive(&hi2c1, SHT85_I2C_ADDR, data, 6, HAL_MAX_DELAY);
-
-    // Convertir los datos recibidos
-    temp_raw = (data[0] << 8) | data[1];
-    hum_raw = (data[3] << 8) | data[4];
-
-    // Calcular temperatura y humedad (según el datasheet del SHT85)
-    *temperature = -45 + 175 * ((float)temp_raw / 65535);
-    *humidity = 100 * ((float)hum_raw / 65535);
-}
-
-bool setAlarm(float temp){		// TRUE apagado. FALSE alarma encendida
-	static bool alarmState = true; // Estado de la alarma (true: apagada, false: activa)
-	uint32_t alarmPeriod = alarmWithActualTemp ? samplingPeriod : (averagePeriod * 1000);
-
-	if(temp > temperature_max){
-		counterTempAlarmDown = 0; // Si la temperatura se sale de rango, reiniciar el contador para cuando entra en el rango
-
-		if(HAL_GetTick() - lastTimeAlarmUp >= alarmPeriod){//si se quiere controlar la alarma con la temperatura acutal o media
-			lastTimeAlarmUp = HAL_GetTick(); // Se actualiza el tiempo de referencia
-			if(temp <= temperature_max){ counterTempAlarmUp = 0; } //Si entra dentro de rango: "falsa" medicion
-			else { counterTempAlarmUp++; }	// Lectura correcta: fuera de rango
-
-			if (counterTempAlarmUp >= maxCounterTempAlarm) { //Se da por buena la lectura: FUERA DE RANGO VERIFICADO
-				counterTempAlarmUp = maxCounterTempAlarm;
-				alarmState = false; // Alarma activada (fuera de rango confirmado)
-			}
-		}
-	}
-	else {
-		counterTempAlarmUp = 0; // Si la temperatura vuelve al rango normal, reiniciar el contador para cuando se sale de rango
-		// Debouncer
-		if(HAL_GetTick() - lastTimeAlarmDown >= alarmPeriod){//si se quiere controlar la alarma con la temperatura actual o media
-			lastTimeAlarmDown = HAL_GetTick(); // Se actualiza el tiempo de referencia
-			if(temp > temperature_max){ counterTempAlarmDown = 0; } //Si sale fuera de rango: "falsa" medicion
-			else { counterTempAlarmDown++; }	// Lectura correcta: dentro de rango
-
-			if (counterTempAlarmDown >= maxCounterTempAlarm) { //Se da por buena la lectura: DENTRO DE RANGO VERIFICADO
-				counterTempAlarmDown = maxCounterTempAlarm; // Limitar el contador
-				alarmState = true; // TRUE: alarma se apaga
-			}
-		}
-	}
-	return alarmState;
-}
-
-
-void calculatorAverageTemperature(float newTemperature) {
-    totalTemperature += newTemperature;
-    sampleCount++;
-
-    if (sampleCount >= averagePeriod*1000/samplingPeriod) { // Se leen por ejemplo 25 muestras (durante 5 segundos. 200ms de tiempo de muestreo)
-        averageTemperature = totalTemperature / (averagePeriod*1000/samplingPeriod);
-        totalTemperature = 0.0f; // Reinicia acumulador
-        sampleCount = 0;
-    }
-}
+void calculatorAverageTemperature(float newTemperature);
 // SENSOR SHT85 TEMPERATURA FIN
 
 // SERVO CON INTERRUPCIONES INICIO
@@ -220,6 +176,12 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
+  // Habilitar el TRC (Trace Control)
+  CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+  // Reiniciar el contador de ciclos
+  DWT->CYCCNT = 0;
+  // Habilitar el contador
+  DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 
   /* USER CODE END Init */
 
@@ -264,6 +226,44 @@ int main(void)
   /* USER CODE BEGIN WHILE */
 	while (1)
 	  {
+
+		/* Medir la distancia */
+
+		    // Si el LED rojo está activo, verificar si han pasado 5 segundos
+		    if (led_rojo_encendido) {
+		        if (HAL_GetTick() - tiempo_inicio_led_rojo >= 5000) { // 5 segundos
+		            LED_All_Off(); // Apagar todos los LEDs
+		            led_rojo_encendido = 0; // Restablecer la bandera
+		        }
+		    } else {
+		        // Cambiar el color del LED según la distancia
+		        if (HC_SR042_ReadDistance() < 6.0f) {
+		            LED_Red_On(); // Encender el LED rojo
+		            tiempo_inicio_led_rojo = HAL_GetTick(); // Guardar el tiempo actual
+		            led_rojo_encendido = 1; // Activar la bandera
+		        } else if (HC_SR042_ReadDistance() >= 6.0f && HC_SR042_ReadDistance() <= 30.0f) {
+		            LED_Green_On(); // Encender el LED verde
+		        } else {
+		            LED_Blue_On(); // Encender el LED azul
+		        }
+		    }
+
+
+		// CONTROL DE LA PUERTA INICIO
+		  //Abrir
+		  if(HC_SR041_ReadDistance() <= USS_THRESHOLD && HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_2) == 0 && (HAL_GetTick() - tiempoRef) >= USS_TIME_THRESHOLD){ // si se detecta a alquien en la puerta y esta está cerrada
+			  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_0, 1);
+			  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_1, 0);
+		  }
+		  //Cerrar
+		  if(HC_SR041_ReadDistance() <= USS_THRESHOLD && HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_3) == 0 && (HAL_GetTick() - tiempoRef) >= USS_TIME_THRESHOLD){ // si se detecta a alquien en la puerta y esta está abierta
+			  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_0, 0);
+			  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_1, 1);
+		  }
+		  if(HC_SR041_ReadDistance() <= USS_THRESHOLD){
+			  tiempoRef = HAL_GetTick();
+		  }
+		// CONTROL DE LA PUERTA FIN
 
 		  // SENSOR SHT85 TEMPERATURA INICIO
 		  if (HAL_GetTick() - lastTimeSHT >= samplingPeriod) { // Leer los sensores cada 200 ms (periodo de muestreo)
@@ -517,11 +517,33 @@ static void MX_GPIO_Init(void)
 /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOC, Trigger_1_USS_Puerta_Pin|Trigger_2_USS_Interior_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2|GPIO_PIN_3, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOD, Motor_Pin_1_Pin|Motor_Pin_2_Pin|LED_R_Pin|LED_G_Pin
+                          |RED_B_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pins : Trigger_1_USS_Puerta_Pin Trigger_2_USS_Interior_Pin */
+  GPIO_InitStruct.Pin = Trigger_1_USS_Puerta_Pin|Trigger_2_USS_Interior_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : Echo_1_USS_Puerta_Pin Echo_2_USS_Interior_Pin */
+  GPIO_InitStruct.Pin = Echo_1_USS_Puerta_Pin|Echo_2_USS_Interior_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PA0 */
   GPIO_InitStruct.Pin = GPIO_PIN_0;
@@ -536,6 +558,21 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
+  /*Configure GPIO pins : Motor_Pin_1_Pin Motor_Pin_2_Pin LED_R_Pin LED_G_Pin
+                           RED_B_Pin */
+  GPIO_InitStruct.Pin = Motor_Pin_1_Pin|Motor_Pin_2_Pin|LED_R_Pin|LED_G_Pin
+                          |RED_B_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : Fin_de_carrera_1_Pin Fin_de_carrera_2_Pin */
+  GPIO_InitStruct.Pin = Fin_de_carrera_1_Pin|Fin_de_carrera_2_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI0_IRQn);
@@ -545,6 +582,195 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+// FUNCIONES PARA EL USS INICIO
+float HC_SR041_ReadDistance(void)
+{
+    uint32_t tiempoEcho_us = 0;
+    float distancia_cm = 0.0f;
+
+    // 1) Generar pulso de 10 us en TRIG (PC0)
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_RESET);
+    DWT_Delay_us(2);      // Pequeño retraso
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_SET);
+    DWT_Delay_us(10);     // Pulso de 10 us
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_RESET);
+
+    // 2) Esperar a que Echo (PC1) se ponga en alto
+    while (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_1) == GPIO_PIN_RESET);
+
+    // Iniciamos conteo de tiempo
+    uint32_t startTick = DWT->CYCCNT;
+
+    // 3) Esperar a que Echo se ponga en bajo
+    while (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_1) == GPIO_PIN_SET);
+
+    // Fin de la medición
+    uint32_t endTick = DWT->CYCCNT;
+
+    // 4) Calcular duración en microsegundos
+    //    Suponiendo SystemCoreClock = 168 MHz
+    //    1 tick DWT ~ 1/168e6 s => us = ticks / (168e6/1e6)
+    tiempoEcho_us = (uint32_t)((endTick - startTick) / (SystemCoreClock / 1000000.0f));
+
+    // 5) Calcular distancia en cm
+    //    Distancia (cm) ≈ tiempoEcho_us / 58
+    distancia_cm = (float)tiempoEcho_us / 58.0f;
+
+    return distancia_cm;
+}
+
+float HC_SR042_ReadDistance(void)
+{
+    uint32_t tiempoEcho_us = 0;
+    float distancia_cm = 0.0f;
+
+    // 1) Generar pulso de 10 us en TRIG (PC0)
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_RESET);
+    DWT_Delay_us(2);      // Pequeño retraso
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET);
+    DWT_Delay_us(10);     // Pulso de 10 us
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_RESET);
+
+    // 2) Esperar a que Echo (PC1) se ponga en alto
+    while (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_3) == GPIO_PIN_RESET);
+
+    // Iniciamos conteo de tiempo
+    uint32_t startTick = DWT->CYCCNT;
+
+    // 3) Esperar a que Echo se ponga en bajo
+    while (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_3) == GPIO_PIN_SET);
+
+    // Fin de la medición
+    uint32_t endTick = DWT->CYCCNT;
+
+    // 4) Calcular duración en microsegundos
+    //    Suponiendo SystemCoreClock = 168 MHz
+    //    1 tick DWT ~ 1/168e6 s => us = ticks / (168e6/1e6)
+    tiempoEcho_us = (uint32_t)((endTick - startTick) / (SystemCoreClock / 1000000.0f));
+
+    // 5) Calcular distancia en cm
+    //    Distancia (cm) ≈ tiempoEcho_us / 58
+    distancia_cm = (float)tiempoEcho_us / 58.0f;
+
+    return distancia_cm;
+}
+/**
+  * @brief Retardo en microsegundos usando DWT
+  * @param us: microsegundos a esperar
+  */
+void DWT_Delay_us(uint32_t us)
+{
+    // Valor inicial de conteo
+    uint32_t startTick = DWT->CYCCNT;
+    // Calcular cuántos ticks de CPU corresponden a "us" microsegundos
+    uint32_t ticks = us * (SystemCoreClock / 1000000UL);
+    // Esperar hasta que se cumpla
+    while ((DWT->CYCCNT - startTick) < ticks);
+}
+
+// FUNCIONES PARA EL USS INICIO
+
+// SENSOR SHT85 TEMPERATURA INICIO
+void ReadSHT85(float *temperature, float *humidity) {
+    uint8_t cmd[2] = {SHT85_CMD_MEASURE_HIGHREP >> 8, SHT85_CMD_MEASURE_HIGHREP & 0xFF};
+    uint8_t data[6];
+
+
+    // Enviar el comando para iniciar la medición
+    HAL_I2C_Master_Transmit(&hi2c1, SHT85_I2C_ADDR, cmd, 2, HAL_MAX_DELAY);
+
+    // Esperar unos 10 ms para completar la medición
+    HAL_Delay(20);
+
+    // Leer los 6 bytes de datos
+    HAL_I2C_Master_Receive(&hi2c1, SHT85_I2C_ADDR, data, 6, HAL_MAX_DELAY);
+
+    // Convertir los datos recibidos
+    temp_raw = (data[0] << 8) | data[1];
+    hum_raw = (data[3] << 8) | data[4];
+
+    // Calcular temperatura y humedad (según el datasheet del SHT85)
+    *temperature = -45 + 175 * ((float)temp_raw / 65535);
+    *humidity = 100 * ((float)hum_raw / 65535);
+}
+
+bool setAlarm(float temp){		// TRUE apagado. FALSE alarma encendida
+	static bool alarmState = true; // Estado de la alarma (true: apagada, false: activa)
+	uint32_t alarmPeriod = alarmWithActualTemp ? samplingPeriod : (averagePeriod * 1000);
+
+	if(temp > temperature_max){
+		counterTempAlarmDown = 0; // Si la temperatura se sale de rango, reiniciar el contador para cuando entra en el rango
+
+		if(HAL_GetTick() - lastTimeAlarmUp >= alarmPeriod){//si se quiere controlar la alarma con la temperatura acutal o media
+			lastTimeAlarmUp = HAL_GetTick(); // Se actualiza el tiempo de referencia
+			if(temp <= temperature_max){ counterTempAlarmUp = 0; } //Si entra dentro de rango: "falsa" medicion
+			else { counterTempAlarmUp++; }	// Lectura correcta: fuera de rango
+
+			if (counterTempAlarmUp >= maxCounterTempAlarm) { //Se da por buena la lectura: FUERA DE RANGO VERIFICADO
+				counterTempAlarmUp = maxCounterTempAlarm;
+				alarmState = false; // Alarma activada (fuera de rango confirmado)
+			}
+		}
+	}
+	else {
+		counterTempAlarmUp = 0; // Si la temperatura vuelve al rango normal, reiniciar el contador para cuando se sale de rango
+		// Debouncer
+		if(HAL_GetTick() - lastTimeAlarmDown >= alarmPeriod){//si se quiere controlar la alarma con la temperatura actual o media
+			lastTimeAlarmDown = HAL_GetTick(); // Se actualiza el tiempo de referencia
+			if(temp > temperature_max){ counterTempAlarmDown = 0; } //Si sale fuera de rango: "falsa" medicion
+			else { counterTempAlarmDown++; }	// Lectura correcta: dentro de rango
+
+			if (counterTempAlarmDown >= maxCounterTempAlarm) { //Se da por buena la lectura: DENTRO DE RANGO VERIFICADO
+				counterTempAlarmDown = maxCounterTempAlarm; // Limitar el contador
+				alarmState = true; // TRUE: alarma se apaga
+			}
+		}
+	}
+	return alarmState;
+}
+
+
+void calculatorAverageTemperature(float newTemperature) {
+    totalTemperature += newTemperature;
+    sampleCount++;
+
+    if (sampleCount >= averagePeriod*1000/samplingPeriod) { // Se leen por ejemplo 25 muestras (durante 5 segundos. 200ms de tiempo de muestreo)
+        averageTemperature = totalTemperature / (averagePeriod*1000/samplingPeriod);
+        totalTemperature = 0.0f; // Reinicia acumulador
+        sampleCount = 0;
+    }
+}
+
+// SENSOR SHT85 TEMPERATURA FIN
+
+// LED RGB INICIO
+
+void LED_Red_On(void) {
+    HAL_GPIO_WritePin(GPIOD, GPIO_PIN_5, GPIO_PIN_SET); // Encender Rojo
+    HAL_GPIO_WritePin(GPIOD, GPIO_PIN_6, GPIO_PIN_RESET); // Apagar Verde
+    HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_RESET); // Apagar Azul
+}
+
+void LED_Green_On(void) {
+    HAL_GPIO_WritePin(GPIOD, GPIO_PIN_6, GPIO_PIN_RESET); // Encender Verde
+    HAL_GPIO_WritePin(GPIOD, GPIO_PIN_5, GPIO_PIN_SET); // Apagar Rojo
+    HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_SET); // Apagar Azul
+}
+
+void LED_Blue_On(void) {
+    HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_SET); // Encender Azul
+    HAL_GPIO_WritePin(GPIOD, GPIO_PIN_5, GPIO_PIN_RESET); // Apagar Rojo
+    HAL_GPIO_WritePin(GPIOD, GPIO_PIN_6, GPIO_PIN_RESET); // Apagar Verde
+}
+
+void LED_All_Off(void) {
+    HAL_GPIO_WritePin(GPIOD, GPIO_PIN_5, GPIO_PIN_RESET); // Apagar Rojo
+    HAL_GPIO_WritePin(GPIOD, GPIO_PIN_6, GPIO_PIN_RESET); // Apagar Verde
+    HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_RESET); // Apagar Azul
+}
+
+// LED RGB FIN
 
 /* USER CODE END 4 */
 

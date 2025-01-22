@@ -59,6 +59,28 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define Trigger_1_USS_Puerta_Pin GPIO_PIN_0
+#define Trigger_1_USS_Puerta_GPIO_Port GPIOC
+#define Echo_1_USS_Puerta_Pin GPIO_PIN_1
+#define Echo_1_USS_Puerta_GPIO_Port GPIOC
+#define Trigger_2_USS_Interior_Pin GPIO_PIN_2
+#define Trigger_2_USS_Interior_GPIO_Port GPIOC
+#define Echo_2_USS_Interior_Pin GPIO_PIN_3
+#define Echo_2_USS_Interior_GPIO_Port GPIOC
+#define Motor_Pin_1_Pin GPIO_PIN_0
+#define Motor_Pin_1_GPIO_Port GPIOD
+#define Motor_Pin_2_Pin GPIO_PIN_1
+#define Motor_Pin_2_GPIO_Port GPIOD
+#define Fin_de_carrera_1_Pin GPIO_PIN_2
+#define Fin_de_carrera_1_GPIO_Port GPIOD
+#define Fin_de_carrera_2_Pin GPIO_PIN_3
+#define Fin_de_carrera_2_GPIO_Port GPIOD
+#define LED_R_Pin GPIO_PIN_4
+#define LED_R_GPIO_Port GPIOD
+#define LED_G_Pin GPIO_PIN_5
+#define LED_G_GPIO_Port GPIOD
+#define RED_B_Pin GPIO_PIN_6
+#define RED_B_GPIO_Port GPIOD
 
 /* USER CODE BEGIN Private defines */
 

@@ -1,0 +1,22 @@
+18:06:31 **** Incremental Build of configuration Debug for project TrabajoMicrosGr33 ****
+make -j12 all 
+arm-none-eabi-gcc "../Core/Src/main.c" -mcpu=cortex-m4 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F411xE -c -I../Core/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/main.d" -MT"Core/Src/main.o" --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -o "Core/Src/main.o"
+../Core/Src/main.c: In function 'HAL_GPIO_EXTI_Callback':
+../Core/Src/main.c:133:18: warning: variable 'pulse' set but not used [-Wunused-but-set-variable]
+  133 |         uint32_t pulse; // mapeo
+      |                  ^~~~~
+../Core/Src/main.c: In function 'main':
+../Core/Src/main.c:218:18: warning: unused variable 'pulse' [-Wunused-variable]
+  218 |         uint32_t pulse = 40 + ((500 - 40) * angle) / 180; // mapeo
+      |                  ^~~~~
+arm-none-eabi-gcc -o "TrabajoMicrosGr33.elf" @"objects.list"   -mcpu=cortex-m4 -T"C:\Users\fpuya\SED\Trabajo-SED-Micro\TrabajoMicrosGr33\STM32F411VETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="TrabajoMicrosGr33.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+Finished building target: TrabajoMicrosGr33.elf
+ 
+arm-none-eabi-size  TrabajoMicrosGr33.elf 
+arm-none-eabi-objdump -h -S TrabajoMicrosGr33.elf  > "TrabajoMicrosGr33.list"
+   text	   data	    bss	    dec	    hex	filename
+  16712	     32	   1864	  18608	   48b0	TrabajoMicrosGr33.elf
+Finished building: default.size.stdout
+ 
+Finished building: TrabajoMicrosGr33.list
+ 

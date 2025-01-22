@@ -47,11 +47,12 @@ volatile uint8_t contador = 0;
 uint8_t ISR = 0; //Flag
 uint8_t state = 0; //estado (puerta abierta o puerta cerrada)
 // debouncer
-uint8_t pulsacion = 1;
+//uint8_t pulsacion = 1;
 uint32_t tiempo = 0;
 int8_t orden = 0;
 int32_t counter = 0;
 int8_t button_count = 0;
+uint32_t lastTimeServoMove = 0;
 
 
 /* USER CODE END PV */
@@ -70,7 +71,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_PIN)
 {
 	uint16_t angle; // en grados. se modifica esto
 	uint32_t pulse; // mapeo
-	if(state == 0){
+
+	/*if(state == 0){
 		angle = 0;
 		pulse = 40 + ((120 - 40) * angle) / 180; // mapeo
 		__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, pulse); // Configura el ciclo de trabajo a 1000 (Rojo apagado)
@@ -79,12 +81,26 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_PIN)
 		pulse = 40 + ((120 - 40) * angle) / 180; // mapeo
 		__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, pulse); // Configura el ciclo de trabajo a 1000 (Rojo apagado)
 	}
-
-	if(GPIO_PIN == GPIO_PIN_0){
+	*/
+	if(GPIO_PIN == GPIO_PIN_0 && ISR == 0){
 		ISR = 1; // Se activa la bandera o flag
+		lastTimeServoMove = HAL_GetTick(); // Se actualiza referencia
+		if(state == 0){
+			angle = 0;
+			pulse = 40 + ((120 - 40) * angle) / 180; // mapeo
+			__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, pulse); // Configura el ciclo de trabajo a 1000 (Rojo apagado)
+		} else{
+			angle = 180;
+			pulse = 40 + ((120 - 40) * angle) / 180; // mapeo
+			__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, pulse); // Configura el ciclo de trabajo a 1000 (Rojo apagado)
+		}
+
 		if(state==0){state=1;}
 		else{state=0;}
 	}
+
+
+
 }
 
 int debouncer(volatile int* button_int, GPIO_TypeDef* GPIO_port, uint16_t GPIO_number) {
@@ -159,6 +175,7 @@ int main(void)
   	counter = HAL_GetTick();
 
 
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -171,37 +188,13 @@ int main(void)
 	  while (ISR == 0) {
 	      contador++;
 	  }
-
-	  if (ISR == 1 && contador != 0) {
-		  // debouncer
-		  if (HAL_GetTick() - counter >= 20)
-		  {
-			  counter = HAL_GetTick();
-			  if (ISR != 1 || contador == 0)
-			  {
-				  button_count = 0;
-			  }
-			  else
-			  {
-				  button_count++;
-			  }
-			  if (button_count == 3) // Periodo antirrebotes
-			  {
-				  button_count = 0;
-				  if (pulsacion)
-				  {
-					  pulsacion = 0;
-				  }
-				  else
-				  {
-					  pulsacion = 1;
-				  }
-			  }
-		  }
+	  if (HAL_GetTick() - lastTimeServoMove >= 380) { // Esto impide invertir el sentido de giro cuando ya ha empezado a moverse el servo. 380ms es lo que tarda en pasar de mover de 0 a 180º
+		  lastTimeServoMove = HAL_GetTick(); // Se actualiza referencia
+		  ISR = 0;
 	  }
 
 	  contador = 0;
-	  ISR = 0;
+	  //ISR = 0;
 
     /* USER CODE BEGIN 3 */
   }

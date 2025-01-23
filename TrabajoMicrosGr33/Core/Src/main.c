@@ -55,26 +55,32 @@ TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 
 /* USER CODE BEGIN PV */
-
-uint32_t tiempoRef;
-
-uint8_t led_rojo_encendido = 0;  // Bandera para indicar si el LED rojo está encendido
-uint32_t tiempo_inicio_led_rojo = 0; // Almacena el tiempo de encendido del LED rojo
-
-
-//Variables GLOBALES:
 // Variables USUARIO INICIO. Para ajustar tiempos de muestreo de temperatura
 uint16_t samplingPeriod = 200; // tiempo de muestreo de temperaturas (en ms)
 uint16_t averagePeriod = 5; // tiempo deseado para calcular las temperaturas medias (en segundos)
 bool alarmWithActualTemp = true; // TRUE: alarma se detecta mas rapido (con temp actual). FALSE: alarma se detecta mas lento (con temp media, se espera a leer varios datos)
 // Variables USUARIO FIN
 
+//Variables GLOBALES:
+// SENSOR ULTRASONIDOS INICIO
+uint32_t tiempoRef;
+float dist = 100.0f;
+bool flagDoor = false;   // flag puerta abierta (true). puerta cerrada (false)
+uint8_t led_rojo_encendido = 0;  // Bandera para indicar si el LED rojo está encendido
+uint32_t tiempo_inicio_led_rojo = 0; // Almacena el tiempo de encendido del LED rojo
+// SENSOR ULTRASONIDOS FIN
+
+
+float distanciaUltra = 0.0f;
+
+
+
 // SENSOR SHT85 TEMPERATURA INICIO
 float temperature = 0.0f;
 float humidity = 0.0f;
 uint16_t temp_raw = 0, hum_raw = 0;
 bool alarm = true; // Estado de la alarma (TRUE: apagada, FALSE: activa)
-float temperature_max = 19.7f;
+float temperature_max = 25.0f;
 // Variables para antirrebotes en control de alarma
 uint32_t lastTimeAlarmUp = 0; // Tiempo desde que se incremento el counterTempAlarmUp
 uint8_t counterTempAlarmUp = 0; // Contador de mediciones consecutivas cuando la temperatura se sale del rango
@@ -128,14 +134,13 @@ void calculatorAverageTemperature(float newTemperature);
 // SERVO CON INTERRUPCIONES INICIO
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_PIN)
 {
-
 	if(GPIO_PIN == GPIO_PIN_0 && ISR == 0){
 		ISR = 1; // Se activa la bandera o flag
 		lastTimeServoMove = HAL_GetTick(); // Se actualiza referencia
 		if(state == 0){
-			__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 160); // Configura el ciclo de trabajo a 1000 (Rojo apagado)
+			__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 160); // Ventana abierta
 		} else{
-			__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 240); // Configura el ciclo de trabajo a 1000 (Rojo apagado)
+			__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 240); // Ventana cerrada
 		}
 
 		if(state==0){state=1;}
@@ -202,12 +207,14 @@ int main(void)
 
 	lastTimeSHT = HAL_GetTick();
 	lastTimeIncreasingLight = HAL_GetTick();
+	tiempo_inicio_led_rojo = HAL_GetTick();
+
   // SENSOR SHT85 TEMPERATURA FIN
 
 	// SERVO CON INTERRUPCIONES INICIO
 	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
 
-	__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 0); // Mueve el servo a la posicion inicial de 180º
+	__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 240); // Mueve el servo a la posicion inicial de 180º
 	// SERVO CON INTERRUPCIONES FIN
 
   /* USER CODE END 2 */
@@ -217,38 +224,21 @@ int main(void)
 	while (1)
 	  {
 
-		/* Medir la distancia */
-
-		    // Si el LED rojo está activo, verificar si han pasado 5 segundos
-		    if (led_rojo_encendido) {
-		        if (HAL_GetTick() - tiempo_inicio_led_rojo >= 5000) { // 5 segundos
-		            LED_All_Off(); // Apagar todos los LEDs
-		            led_rojo_encendido = 0; // Restablecer la bandera
-		        }
-		    } else {
-		        // Cambiar el color del LED según la distancia
-		        if (HC_SR042_ReadDistance() < 6.0f) {
-		            LED_Red_On(); // Encender el LED rojo
-		            tiempo_inicio_led_rojo = HAL_GetTick(); // Guardar el tiempo actual
-		            led_rojo_encendido = 1; // Activar la bandera
-		        } else if (HC_SR042_ReadDistance() >= 6.0f && HC_SR042_ReadDistance() <= 30.0f) {
-		            LED_Green_On(); // Encender el LED verde
-		        } else {
-		            LED_Blue_On(); // Encender el LED azul
-		        }
-		    }
-
-
 		// CONTROL DE LA PUERTA INICIO
 		  //Abrir
 		  if(HC_SR041_ReadDistance() <= USS_THRESHOLD && HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_2) == 0 && (HAL_GetTick() - tiempoRef) >= USS_TIME_THRESHOLD){ // si se detecta a alquien en la puerta y esta está cerrada
 			  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_0, 1);
+
 			  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_1, 0);
+			  //flagDoor = true;
 		  }
+		  distanciaUltra = HC_SR041_ReadDistance();
 		  //Cerrar
 		  if(HC_SR041_ReadDistance() <= USS_THRESHOLD && HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_3) == 0 && (HAL_GetTick() - tiempoRef) >= USS_TIME_THRESHOLD){ // si se detecta a alquien en la puerta y esta está abierta
 			  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_0, 0);
 			  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_1, 1);
+			  //distanciaUltra = HC_SR041_ReadDistance();
+			  //flagDoor = false;
 		  }
 		  if(HC_SR041_ReadDistance() <= USS_THRESHOLD){
 			  tiempoRef = HAL_GetTick();
@@ -259,6 +249,7 @@ int main(void)
 		  if (HAL_GetTick() - lastTimeSHT >= samplingPeriod) { // Leer los sensores cada 200 ms (periodo de muestreo)
 			  lastTimeSHT = HAL_GetTick(); // Se actualiza referencia
 			  ReadSHT85(&temperature, &humidity); // Leer sensores
+//			  dist = HC_SR042_ReadDistance();
 			  calculatorAverageTemperature(temperature);		// Se calculan temperaturas medias
 			  float temperatureToCheck = alarmWithActualTemp ? temperature : averageTemperature;
 			  alarm = setAlarm(temperatureToCheck);      // Verificar alarma. Si se quiere controlar la alarma con la temperatura media. Se activa más tarde
@@ -298,17 +289,37 @@ int main(void)
 		  }
 		  // SENSOR SHT85 TEMPERATURA FIN
 
+		  // SENSOR ULTRASONIDOS INICIO
+		  /* Medir la distancia */
+
+			// Si el LED rojo está activo, verificar si han pasado 5 segundos
+			if (led_rojo_encendido) {
+				if (HAL_GetTick() - tiempo_inicio_led_rojo >= 5000) { // 5 segundos
+					LED_All_Off(); // Apagar todos los LEDs
+					led_rojo_encendido = 0; // Restablecer la bandera
+				}
+			} else {
+				// Cambiar el color del LED según la distancia
+				if (dist < 6.0f) {
+					LED_Red_On(); // Encender el LED rojo
+					tiempo_inicio_led_rojo = HAL_GetTick(); // Guardar el tiempo actual
+					led_rojo_encendido = 1; // Activar la bandera
+				} else if (dist >= 6.0f && dist <= 30.0f) {
+					LED_Green_On(); // Encender el LED verde
+				} else {
+					LED_Blue_On(); // Encender el LED azul
+				}
+			}
+		  // SENSOR ULTRASONIDOS FIN
+
 			// SERVO CON INTERRUPCIONES INICIO
-			while (ISR == 0) {
-			  contador++;
-		  }
+			while (ISR == 1) {
+			  if (HAL_GetTick() - lastTimeServoMove >= 380) { // Esto impide invertir el sentido de giro cuando ya ha empezado a moverse el servo. 380ms es lo que tarda en pasar de mover de 0 a 180º
+				  lastTimeServoMove = HAL_GetTick(); // Se actualiza referencia
+				  ISR = 0; // Se baja la bandera cuando pasan 380ms
+			  }
+			}
 
-		  if (HAL_GetTick() - lastTimeServoMove >= 380) { // Esto impide invertir el sentido de giro cuando ya ha empezado a moverse el servo. 380ms es lo que tarda en pasar de mover de 0 a 180º
-			  lastTimeServoMove = HAL_GetTick(); // Se actualiza referencia
-			  ISR = 0;
-		  }
-
-		  contador = 0;
 			// SERVO CON INTERRUPCIONES FIN
     /* USER CODE END WHILE */
 

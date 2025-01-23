@@ -60,8 +60,8 @@ all: main-build
 main-build: TrabajoMicrosGr33.elf secondary-outputs
 
 # Tool invocations
-TrabajoMicrosGr33.elf TrabajoMicrosGr33.map: $(OBJS) $(USER_OBJS) C:\Users\fpuya\SED\Trabajo-SED-Micro\TrabajoMicrosGr33\STM32F411VETX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "TrabajoMicrosGr33.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\fpuya\SED\Trabajo-SED-Micro\TrabajoMicrosGr33\STM32F411VETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="TrabajoMicrosGr33.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+TrabajoMicrosGr33.elf TrabajoMicrosGr33.map: $(OBJS) $(USER_OBJS) C:\Users\carlo\STM32CubeIDE\workspace_1.17.0\TrabajoMicrosGr33\STM32F411VETX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "TrabajoMicrosGr33.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\carlo\STM32CubeIDE\workspace_1.17.0\TrabajoMicrosGr33\STM32F411VETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="TrabajoMicrosGr33.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

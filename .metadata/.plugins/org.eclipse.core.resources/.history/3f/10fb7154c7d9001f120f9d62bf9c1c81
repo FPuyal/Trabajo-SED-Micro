@@ -54,6 +54,10 @@ EstadoPuerta estado_actual = CERRADO;
 float distanciaUSS1 = 100.0f;
 uint32_t tiempoLectura = 0;
 
+// VARIABLES DE SIMULACION
+uint32_t fin_carrera_1, fin_carrera_2, motor_1, motor_2, uss_valor;
+
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -106,6 +110,12 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   /* USER CODE BEGIN 2 */
+
+  fin_carrera_1 = 1;
+  fin_carrera_2 = 0;
+  motor_1 = 0;
+  motor_2 = 0;
+  uss_valor = 100;
 
   /* USER CODE END 2 */
 

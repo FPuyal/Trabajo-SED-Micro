@@ -16,3 +16,21 @@ Command-line arguments:  -os win32 -ws win32 -arch x86_64 -data C:\Users\fpuya\S
 
 !ENTRY org.eclipse.cdt.core 1 0 2025-01-22 10:21:13.909
 !MESSAGE Indexed 'PuertaCorredera' (20 sources, 142 headers) in 4.77 sec: 12,206 declarations; 40,765 references; 1 unresolved inclusions; 92 syntax errors; 240 unresolved names (0.45%)
+!SESSION 2025-01-23 20:03:29.237 -----------------------------------------------
+eclipse.buildId=Version 1.17.0
+java.version=21.0.3
+java.vendor=Eclipse Adoptium
+BootLoader constants: OS=win32, ARCH=x86_64, WS=win32, NL=es_ES
+Command-line arguments:  -os win32 -ws win32 -arch x86_64
+
+!ENTRY org.eclipse.core.resources 2 10035 2025-01-23 20:03:30.787
+!MESSAGE The workspace exited with unsaved changes in the previous session; refreshing workspace to recover changes.
+
+!ENTRY com.st.stm32cube.ide.mcu.informationcenter 4 4 2025-01-23 20:03:34.506
+!MESSAGE CubeMX plugin appears to be active, Log4j initialization might be too late.
+
+!ENTRY com.st.stm32cube.ide.mcu.informationcenter 1 1 2025-01-23 20:03:34.507
+!MESSAGE Log4j2 initialized with config file C:\Users\fpuya\SED\Trabajo-SED-Micro\.metadata\.log4j2.xml
+
+!ENTRY com.st.stm32cube.ide.mcu.ide 1 1 2025-01-23 20:03:44.869
+!MESSAGE Started RMI Server, listening on port 41337

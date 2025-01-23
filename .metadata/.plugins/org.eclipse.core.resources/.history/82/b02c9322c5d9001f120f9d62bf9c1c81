@@ -54,6 +54,10 @@ EstadoPuerta estado_actual = CERRADO;
 float distanciaUSS1 = 100.0f;
 uint32_t tiempoLectura = 0;
 
+// VARIABLES DE SIMULACION
+uint32_t fin_carrera_1, fin_carrera_2, motor_1, motor_2, uss_valor;
+
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -107,6 +111,12 @@ int main(void)
   MX_GPIO_Init();
   /* USER CODE BEGIN 2 */
 
+  fin_carrera_1 = 1;
+  fin_carrera_2 = 0;
+  motor_1 = 0;
+  motor_2 = 0;
+  uss_valor = 100;
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -117,48 +127,66 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 
+
+
 	  //ACTUALIZACIÓN DE LA LECTURA DEL USS DE LA PUERTA
-	  if(HAL_GetTick()-tiempoLectura >= USS_READTIME){
-		  distanciaUSS1 = HC_SR04_ReadDistance();
-		  tiempoLectura = HAL_GetTick();
-	  }
+//	  if(HAL_GetTick()-tiempoLectura >= USS_READTIME){
+//		  distanciaUSS1 = HC_SR04_ReadDistance();
+//		  tiempoLectura = HAL_GetTick();
+//	  }
 
 	  // FSM PUERTA INICIO
 
 	  switch(estado_actual){
 	  case CERRADO:
-		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0);
-		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 0);
-		  if(distanciaUSS1 <= USS_THRESHOLD) estado_actual = ABRIR;
+		  motor_1 = 0;
+		  motor_2 = 0;
+		  if(uss_valor <= USS_THRESHOLD) estado_actual = ABRIR;
 		  break;
 	  case ABRIR:
-		  if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_2) == 0){
-			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0);
-			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 0);
-		  }
-		  else{
-			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 1);
-			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 0);
-		  }
-		  if(distanciaUSS1 > USS_THRESHOLD && HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_2) == 0) estado_actual = ABIERTO;
+		  motor_1 = 1;
+		  motor_2 = 0;
+		  if(uss_valor > USS_THRESHOLD && fin_carrera_1 == 0) estado_actual = ABIERTO;
 		  break;
 	  case ABIERTO:
-		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0);
-		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 0);
-		  if(distanciaUSS1 <= USS_THRESHOLD) estado_actual = CERRAR;
+		  motor_1 = 0;
+		  motor_2 = 0;
+		  if(uss_valor <= USS_THRESHOLD) estado_actual = CERRAR;
 		  break;
 	  case CERRAR:
-		  if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_3) == 0){
-			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0);
-			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 0);
-		  }
-		  else{
-			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0);
-			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 1);
-		  }
-		  if(distanciaUSS1 > USS_THRESHOLD && HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_3) == 0) estado_actual = CERRADO;
+		  motor_1 = 0;
+		  motor_2 = 1;
+		  if(uss_valor > USS_THRESHOLD && fin_carrera_2 == 0) estado_actual = CERRADO;
 		  break;
 	  }
+
+//	  switch(estado_actual){
+//	  case CERRADO:
+//		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0);
+//		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 0);
+//		  if(distanciaUSS1 <= USS_THRESHOLD) estado_actual = ABRIR;
+//		  break;
+//	  case ABRIR:
+//		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 1);
+//		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 0);
+//		  if(distanciaUSS1 > USS_THRESHOLD && HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_2) == 0) estado_actual = ABIERTO;
+//		  break;
+//	  case ABIERTO:
+//		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0);
+//		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 0);
+//		  if(distanciaUSS1 <= USS_THRESHOLD) estado_actual = CERRAR;
+//		  break;
+//	  case CERRAR:
+//		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0);
+//		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 1);
+//		  if(distanciaUSS1 > USS_THRESHOLD && HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_3) == 0) estado_actual = CERRADO;
+//		  break;
+//	  }
+//
+//	  if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_2) == 0 || HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_3) == 0){ // Parada de motor cuando se active cualquier fin de carrera
+//		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0);
+//		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 0);
+//	  }
 
 	  // FSM PUERTA FIN
   }

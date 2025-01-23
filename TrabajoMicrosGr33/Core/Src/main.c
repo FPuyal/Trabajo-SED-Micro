@@ -105,6 +105,9 @@ uint8_t state = 0; //estado (puerta abierta o puerta cerrada)
 uint32_t lastTimeServoMove = 0;
 // SERVO CON INTERRUPCIONES FIN
 
+// SENSORES ULTRASONIDO
+float distanciaUSS1 = 100.0f, distanciaUSS2 = 100.0f;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -223,27 +226,43 @@ int main(void)
   /* USER CODE BEGIN WHILE */
 	while (1)
 	  {
+		/* Medir la distancia */
+				distanciaUSS1 = HC_SR041_ReadDistance();
+				distanciaUSS2 = HC_SR042_ReadDistance();
 
-		// CONTROL DE LA PUERTA INICIO
-		  //Abrir
-		  if(HC_SR041_ReadDistance() <= USS_THRESHOLD && HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_2) == 0 && (HAL_GetTick() - tiempoRef) >= USS_TIME_THRESHOLD){ // si se detecta a alquien en la puerta y esta está cerrada
-			  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_0, 1);
+				    // Si el LED rojo está activo, verificar si han pasado 5 segundos
+				    if (led_rojo_encendido) {
+				        if (HAL_GetTick() - tiempo_inicio_led_rojo >= 5000) { // 5 segundos
+				            LED_All_Off(); // Apagar todos los LEDs
+				            led_rojo_encendido = 0; // Restablecer la bandera
+				        }
+				    } else {
+				        // Cambiar el color del LED según la distancia
+				        if (distanciaUSS2 < 6.0f) {
+				            LED_Red_On(); // Encender el LED rojo
+				            tiempo_inicio_led_rojo = HAL_GetTick(); // Guardar el tiempo actual
+				            led_rojo_encendido = 1; // Activar la bandera
+				        } else if (distanciaUSS2 >= 6.0f && distanciaUSS2 <= 30.0f) {
+				            LED_Green_On(); // Encender el LED verde
+				        } else {
+				            LED_Blue_On(); // Encender el LED azul
+				        }
+				    }
 
-			  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_1, 0);
-			  //flagDoor = true;
-		  }
-		  distanciaUltra = HC_SR041_ReadDistance();
-		  //Cerrar
-		  if(HC_SR041_ReadDistance() <= USS_THRESHOLD && HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_3) == 0 && (HAL_GetTick() - tiempoRef) >= USS_TIME_THRESHOLD){ // si se detecta a alquien en la puerta y esta está abierta
-			  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_0, 0);
-			  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_1, 1);
-			  //distanciaUltra = HC_SR041_ReadDistance();
-			  //flagDoor = false;
-		  }
-		  if(HC_SR041_ReadDistance() <= USS_THRESHOLD){
-			  tiempoRef = HAL_GetTick();
-		  }
-		// CONTROL DE LA PUERTA FIN
+
+				// CONTROL DE LA PUERTA INICIO
+				  //Abrir
+				  if(distanciaUSS1 <= USS_THRESHOLD && HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_2) == 0 && (HAL_GetTick() - tiempoRef) >= USS_TIME_THRESHOLD){ // si se detecta a alquien en la puerta y esta está cerrada
+					  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_0, 1);
+					  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_1, 0);
+				  }
+				  //Cerrar
+				  if(distanciaUSS1 <= USS_THRESHOLD && HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_3) == 0 && (HAL_GetTick() - tiempoRef) >= USS_TIME_THRESHOLD){ // si se detecta a alquien en la puerta y esta está abierta
+					  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_0, 0);
+					  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_1, 1);
+				  }
+				  tiempoRef = HAL_GetTick();
+				// CONTROL DE LA PUERTA FIN
 
 		  // SENSOR SHT85 TEMPERATURA INICIO
 		  if (HAL_GetTick() - lastTimeSHT >= samplingPeriod) { // Leer los sensores cada 200 ms (periodo de muestreo)
@@ -288,29 +307,6 @@ int main(void)
 			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2, GPIO_PIN_RESET); // AMARILLO (ROJO + VERDE)
 		  }
 		  // SENSOR SHT85 TEMPERATURA FIN
-
-		  // SENSOR ULTRASONIDOS INICIO
-		  /* Medir la distancia */
-
-			// Si el LED rojo está activo, verificar si han pasado 5 segundos
-			if (led_rojo_encendido) {
-				if (HAL_GetTick() - tiempo_inicio_led_rojo >= 5000) { // 5 segundos
-					LED_All_Off(); // Apagar todos los LEDs
-					led_rojo_encendido = 0; // Restablecer la bandera
-				}
-			} else {
-				// Cambiar el color del LED según la distancia
-				if (dist < 6.0f) {
-					LED_Red_On(); // Encender el LED rojo
-					tiempo_inicio_led_rojo = HAL_GetTick(); // Guardar el tiempo actual
-					led_rojo_encendido = 1; // Activar la bandera
-				} else if (dist >= 6.0f && dist <= 30.0f) {
-					LED_Green_On(); // Encender el LED verde
-				} else {
-					LED_Blue_On(); // Encender el LED azul
-				}
-			}
-		  // SENSOR ULTRASONIDOS FIN
 
 			// SERVO CON INTERRUPCIONES INICIO
 			while (ISR == 1) {

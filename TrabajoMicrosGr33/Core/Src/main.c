@@ -110,7 +110,7 @@ float distanciaUSS2 = 100.0f;
 uint32_t tiempoLectura = 0;
 
 // PUERTA
-EstadoPuerta estado_actual = CERRADO;
+EstadoPuerta estado_actual = CERRAR;
 
 /* USER CODE END PV */
 
@@ -276,8 +276,7 @@ int main(void) {
 				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_0, 1);
 				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_1, 0);
 			}
-			if (distanciaUSS1 > USS1_THRESHOLD
-					&& HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_2) == 0)
+			if (distanciaUSS1 > USS1_THRESHOLD && HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_2) == 0)
 				estado_actual = ABIERTO;
 			break;
 		case ABIERTO:
@@ -294,8 +293,7 @@ int main(void) {
 				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_0, 0);
 				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_1, 1);
 			}
-			if (distanciaUSS1 > USS1_THRESHOLD
-					&& HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_3) == 0)
+			if (distanciaUSS1 > USS1_THRESHOLD && HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_3) == 0)
 				estado_actual = CERRADO;
 			break;
 		}
@@ -670,8 +668,7 @@ float HC_SR042_ReadDistance(void) {
 	uint32_t startTick = DWT->CYCCNT;
 
 	// 3) Esperar a que Echo se ponga en bajo
-	while (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_3) == GPIO_PIN_SET)
-		;
+	while (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_3) == GPIO_PIN_SET);
 
 	// Fin de la medición
 	uint32_t endTick = DWT->CYCCNT;
